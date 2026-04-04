@@ -288,13 +288,14 @@ function pctFmt(n) { return n.toFixed(4) + '%'; }
 function computeStats(trades) {
   const stats = {};
   trades.forEach(t => {
-    if (!stats[t.coin]) stats[t.coin] = { coin: t.coin, volume: 0, fees: 0, pnl: 0, trades: 0, type: getMarketType(t.coin) };
+    if (!stats[t.coin]) stats[t.coin] = { coin: t.coin, volume: 0, fees: 0, entryFees: 0, pnl: 0, trades: 0, type: getMarketType(t.coin) };
     stats[t.coin].volume += t.ntl;
     stats[t.coin].fees += t.fee;
+    if (isEntryTrade(t.dir)) stats[t.coin].entryFees += t.fee;
     stats[t.coin].pnl += t.pnl;
     stats[t.coin].trades++;
   });
-  Object.values(stats).forEach(s => { s.feePct = s.volume > 0 ? (s.fees / s.volume) * 100 : 0; s.netPnl = s.pnl - s.fees; });
+  Object.values(stats).forEach(s => { s.feePct = s.volume > 0 ? (s.fees / s.volume) * 100 : 0; s.netPnl = s.pnl - s.entryFees; });
   return stats;
 }
 
@@ -327,6 +328,7 @@ function renderOverview() {
   const totalVol = vals.reduce((s,c) => s + c.volume, 0);
   const totalFees = vals.reduce((s,c) => s + c.fees, 0);
   const totalPnl = vals.reduce((s,c) => s + c.pnl, 0);
+  const totalEntryFees = allTrades.filter(t => isEntryTrade(t.dir)).reduce((s,t) => s + t.fee, 0);
 
   document.getElementById('timeRange').innerHTML =
     '<span>Period: <strong>' + allTrades[0].ts.toLocaleDateString() + '</strong> to <strong>' + allTrades[allTrades.length-1].ts.toLocaleDateString() + '</strong></span>' +
@@ -334,10 +336,10 @@ function renderOverview() {
 
   renderCards('overviewCards', [
     { label: 'Total Volume', value: fmt(totalVol) },
-    { label: 'Total Fees', value: fmt(totalFees), cls: 'negative' },
-    { label: 'Closed PnL', value: fmtPnl(totalPnl), cls: pnlClass(totalPnl), sub: 'Sem descontar fees' },
-    { label: 'Net PnL', value: fmtPnl(totalPnl - totalFees), cls: pnlClass(totalPnl - totalFees), sub: 'closedPnl - fees' },
-    { label: 'Unique Coins', value: vals.length },
+    { label: 'All Fees (entry+exit)', value: fmt(totalFees), cls: 'negative' },
+    { label: 'Closed PnL', value: fmtPnl(totalPnl), cls: pnlClass(totalPnl), sub: 'Inclui fee de saida' },
+    { label: 'Entry Fees', value: fmt(totalEntryFees), cls: 'negative', sub: 'Fees das aberturas' },
+    { label: 'Net PnL', value: fmtPnl(totalPnl - totalEntryFees), cls: pnlClass(totalPnl - totalEntryFees), sub: 'closedPnl - entry fees' },
     { label: 'Avg Trade', value: fmt(totalVol / allTrades.length) },
   ]);
 
@@ -395,7 +397,8 @@ function renderCumPnlChart() {
   allTrades.forEach(t => {
     const day = t.ts.toISOString().slice(0,10);
     if (!daily[day]) daily[day] = 0;
-    daily[day] += t.pnl;
+    const entryFee = isEntryTrade(t.dir) ? t.fee : 0;
+    daily[day] += t.pnl - entryFee;
   });
   const points = [];
   Object.keys(daily).sort().forEach(day => { cum += daily[day]; points.push({ x: day, y: cum }); });
@@ -470,12 +473,28 @@ function getSpreadTrades(hours) {
   return trades;
 }
 
+// closedPnl já inclui fee de saída. Precisamos descontar só as fees de entrada.
+// Entry = Open Long, Open Short, Open Long (Price Improved), Open Short (Price Improved)
+// Exit  = Close Long, Close Short, Close Long (Price Improved), Close Short (Price Improved), Liquidations
+// Para spot (Buy/Sell): tratamos fee como entry fee (pior cenário)
+// Fallback: se não conseguir identificar, estima entry fee = volume * 0.00856%
+function isEntryTrade(dir) {
+  const d = dir.toLowerCase();
+  return d.startsWith('open ') || d === 'buy' || d === 'sell' || d.includes('long > short') || d.includes('short > long');
+}
+
 function calcSpreadStats(trades) {
   const vol = trades.reduce((s,t) => s + t.ntl, 0);
-  const fees = trades.reduce((s,t) => s + t.fee, 0);
+  const allFees = trades.reduce((s,t) => s + t.fee, 0);
   const closedPnl = trades.reduce((s,t) => s + t.pnl, 0);
-  const netPnl = closedPnl - fees;
-  return { vol, fees, closedPnl, netPnl, count: trades.length };
+
+  // Fee de entrada real (das trades de abertura)
+  const entryTrades = trades.filter(t => isEntryTrade(t.dir));
+  const entryFeesReal = entryTrades.reduce((s,t) => s + t.fee, 0);
+
+  const netPnl = closedPnl - entryFeesReal;
+
+  return { vol, allFees, entryFeesReal, closedPnl, netPnl, count: trades.length, entryCount: entryTrades.length, exitCount: trades.length - entryTrades.length };
 }
 
 function renderSpreads() {
@@ -490,11 +509,11 @@ function renderSpreads() {
   function makeCards(s, prefix) {
     return [
       { label: prefix + ' Volume', value: fmt(s.vol) },
-      { label: prefix + ' Trades', value: s.count.toLocaleString() },
-      { label: 'Closed PnL', value: fmtPnl(s.closedPnl), cls: pnlClass(s.closedPnl), sub: 'Sem descontar fees' },
-      { label: 'Fees', value: fmt(s.fees), cls: 'negative' },
-      { label: 'Net PnL', value: fmtPnl(s.netPnl), cls: pnlClass(s.netPnl), sub: 'closedPnl - fees' },
-      { label: 'Fee/Vol', value: s.vol > 0 ? pctFmt((s.fees/s.vol)*100) : '0%' },
+      { label: 'Trades', value: s.count.toLocaleString(), sub: s.entryCount + ' entry / ' + s.exitCount + ' exit' },
+      { label: 'Closed PnL', value: fmtPnl(s.closedPnl), cls: pnlClass(s.closedPnl), sub: 'Inclui fee de saida' },
+      { label: 'Entry Fees', value: fmt(s.entryFeesReal), cls: 'negative', sub: 'Fees das aberturas' },
+      { label: 'Net PnL', value: fmtPnl(s.netPnl), cls: pnlClass(s.netPnl), sub: 'closedPnl - entry fees' },
+      { label: 'Fee/Vol', value: s.vol > 0 ? pctFmt((s.allFees/s.vol)*100) : '0%' },
     ];
   }
 
@@ -502,10 +521,10 @@ function renderSpreads() {
   renderCards('spreadXyz100Cards', makeCards(xyz100S, 'XYZ100'));
   renderCards('spreadSp500Cards', makeCards(sp500S, 'S&P500'));
 
-  // Daily Net PnL chart
+  // Daily Net PnL chart (closedPnl - entry fees only, exit fee already in closedPnl)
   const dailyXyz = {}, dailySp = {};
-  xyz100.forEach(t => { const d = t.ts.toISOString().slice(0,10); dailyXyz[d] = (dailyXyz[d]||0) + (t.pnl - t.fee); });
-  sp500.forEach(t => { const d = t.ts.toISOString().slice(0,10); dailySp[d] = (dailySp[d]||0) + (t.pnl - t.fee); });
+  xyz100.forEach(t => { const d = t.ts.toISOString().slice(0,10); const entryFee = isEntryTrade(t.dir) ? t.fee : 0; dailyXyz[d] = (dailyXyz[d]||0) + (t.pnl - entryFee); });
+  sp500.forEach(t => { const d = t.ts.toISOString().slice(0,10); const entryFee = isEntryTrade(t.dir) ? t.fee : 0; dailySp[d] = (dailySp[d]||0) + (t.pnl - entryFee); });
   const allDays = [...new Set([...Object.keys(dailyXyz), ...Object.keys(dailySp)])].sort();
 
   if (charts.spreadDailyPnl) charts.spreadDailyPnl.destroy();
@@ -560,7 +579,7 @@ function renderSpreads() {
     { key: 'ntl', render: r => fmt(r.ntl) },
     { key: 'fee', render: r => '<span class="negative">' + fmt(r.fee) + '</span>' },
     { key: 'pnl', render: r => '<span class="' + pnlClass(r.pnl) + '">' + fmtPnl(r.pnl) + '</span>' },
-    { key: 'net', render: r => { const n = r.pnl - r.fee; return '<span class="' + pnlClass(n) + '">' + fmtPnl(n) + '</span>'; }},
+    { key: 'net', render: r => { const ef = isEntryTrade(r.dir) ? r.fee : 0; const n = r.pnl - ef; return '<span class="' + pnlClass(n) + '">' + fmtPnl(n) + '</span>' + (isEntryTrade(r.dir) ? ' <span style="color:var(--yellow);font-size:0.7em">ENTRY</span>' : ''); }},
   ];
   renderTable('spreadTradesBody', recent, cols);
 }
