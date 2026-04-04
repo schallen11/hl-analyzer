@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HL Trade Analyzer Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg2: #12121a;
+  --bg3: #1a1a28;
+  --bg4: #22223a;
+  --border: #2a2a42;
+  --text: #e0e0f0;
+  --text2: #8888aa;
+  --accent: #6c5ce7;
+  --accent2: #a29bfe;
+  --green: #00e676;
+  --green-bg: rgba(0,230,118,0.08);
+  --red: #ff5252;
+  --red-bg: rgba(255,82,82,0.08);
+  --yellow: #ffd740;
+  --blue: #448aff;
+  --orange: #ff9100;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+header { text-align: center; padding: 30px 0 20px; }
+header h1 { font-size: 1.8em; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 6px; }
+header p { color: var(--text2); font-size: 0.9em; }
+
+.upload-section { border: 2px dashed var(--border); border-radius: 16px; padding: 50px; text-align: center; cursor: pointer; transition: all 0.3s; margin: 20px 0; }
+.upload-section:hover { border-color: var(--accent); background: rgba(108,92,231,0.05); }
+.upload-section svg { color: var(--accent); margin-bottom: 12px; }
+.upload-text { display: block; font-size: 1.1em; color: var(--text); margin-bottom: 6px; }
+.upload-hint { display: block; color: var(--text2); font-size: 0.85em; }
+
+.tabs { display: flex; gap: 4px; background: var(--bg2); border-radius: 12px; padding: 4px; margin-bottom: 20px; overflow-x: auto; }
+.tab-btn { padding: 10px 20px; border: none; background: transparent; color: var(--text2); font-size: 0.9em; font-weight: 500; border-radius: 10px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.tab-btn:hover { color: var(--text); background: var(--bg3); }
+.tab-btn.active { background: var(--accent); color: #fff; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; }
+.card-label { color: var(--text2); font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.card-value { font-size: 1.4em; font-weight: 700; font-variant-numeric: tabular-nums; }
+.card-sub { font-size: 0.78em; color: var(--text2); margin-top: 4px; }
+.positive { color: var(--green); }
+.negative { color: var(--red); }
+
+.section-title { font-size: 1.1em; font-weight: 600; margin: 24px 0 12px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.section-title .badge { background: var(--accent); color: #fff; font-size: 0.7em; padding: 2px 8px; border-radius: 6px; }
+
+.table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
+thead th { background: var(--bg3); padding: 12px 14px; text-align: left; color: var(--text2); font-weight: 600; text-transform: uppercase; font-size: 0.76em; letter-spacing: 0.5px; position: sticky; top: 0; cursor: pointer; white-space: nowrap; user-select: none; }
+thead th:hover { color: var(--text); }
+tbody td { padding: 10px 14px; border-top: 1px solid var(--border); white-space: nowrap; }
+tbody tr:hover { background: rgba(108,92,231,0.05); }
+tbody tr.group-row { background: var(--bg3); font-weight: 700; }
+tbody tr.group-row td { border-top: 2px solid var(--accent); padding: 12px 14px; }
+
+.chart-container { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+.chart-container h3 { font-size: 0.95em; color: var(--text2); margin-bottom: 12px; }
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 768px) { .chart-row { grid-template-columns: 1fr; } }
+
+.spread-group { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.spread-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.spread-name { font-size: 1.1em; font-weight: 700; }
+.spread-pnl { font-size: 1.2em; font-weight: 700; }
+.spread-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.spread-stat { background: var(--bg3); border-radius: 8px; padding: 10px 14px; }
+.spread-stat-label { font-size: 0.72em; color: var(--text2); text-transform: uppercase; }
+.spread-stat-value { font-size: 1em; font-weight: 600; margin-top: 2px; }
+
+.filter-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.filter-bar input, .filter-bar select { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 8px; font-size: 0.88em; outline: none; }
+.filter-bar input:focus, .filter-bar select:focus { border-color: var(--accent); }
+.pill-group { display: flex; gap: 3px; background: var(--bg3); border-radius: 8px; padding: 3px; }
+.pill { padding: 6px 14px; border: none; background: transparent; color: var(--text2); font-size: 0.82em; border-radius: 6px; cursor: pointer; }
+.pill.active { background: var(--accent); color: #fff; }
+
+.time-range { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85em; color: var(--text2); }
+.time-range strong { color: var(--text); }
+
+.table-scroll { max-height: 500px; overflow-y: auto; }
+.table-scroll::-webkit-scrollbar { width: 6px; }
+.table-scroll::-webkit-scrollbar-track { background: var(--bg2); }
+.table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>HL Trade Analyzer Pro</h1>
+    <p>Hyperliquid trade history analytics &middot; Spreads, PnL, Volume</p>
+  </header>
+
+  <div class="upload-section" id="uploadArea">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <span class="upload-text">Upload your Hyperliquid trade history CSV</span>
+    <span class="upload-hint">Drag &amp; drop or click to select</span>
+    <input type="file" id="csvFile" accept=".csv" style="display:none">
+  </div>
+
+  <div id="dashboard" style="display:none">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="xyz-unit">XYZ &amp; Unit</button>
+      <button class="tab-btn" data-tab="spreads">Spread Analysis</button>
+      <button class="tab-btn" data-tab="vol24h">Volume 24h</button>
+      <button class="tab-btn" data-tab="vol7d">Volume 7d</button>
+      <button class="tab-btn" data-tab="all-trades">All Trades</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="tab-content active" id="tab-overview">
+      <div id="timeRange" class="time-range"></div>
+      <div class="cards" id="overviewCards"></div>
+      <div class="chart-row">
+        <div class="chart-container"><h3>Volume by Coin (Top 10)</h3><canvas id="chartVolume"></canvas></div>
+        <div class="chart-container"><h3>PnL by Coin</h3><canvas id="chartPnl"></canvas></div>
+      </div>
+      <div class="chart-container"><h3>Cumulative PnL Over Time</h3><canvas id="chartCumPnl"></canvas></div>
+      <div class="section-title">Stats by Coin</div>
+      <div class="filter-bar">
+        <input type="text" id="coinSearch" placeholder="Search coin...">
+        <div class="pill-group" id="marketTypeFilter">
+          <button class="pill active" data-type="all">All</button>
+          <button class="pill" data-type="spot">Spot</button>
+          <button class="pill" data-type="perp">Perp</button>
+          <button class="pill" data-type="xyz">XYZ</button>
+        </div>
+      </div>
+      <div class="table-wrap"><div class="table-scroll">
+        <table><thead><tr>
+          <th data-sort="coin">Coin</th>
+          <th data-sort="type">Type</th>
+          <th data-sort="volume">Volume</th>
+          <th data-sort="fees">Fees</th>
+          <th data-sort="pnl">Closed PnL</th>
+          <th data-sort="netPnl">Net PnL</th>
+          <th data-sort="trades">Trades</th>
+          <th data-sort="feePct">Fee%</th>
+        </tr></thead><tbody id="coinTableBody"></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- XYZ & UNIT -->
+    <div class="tab-content" id="tab-xyz-unit">
+      <div class="section-title">XYZ Markets (Perps) <span class="badge">Grouped</span></div>
+      <div class="cards" id="xyzTotalCards"></div>
+      <div class="table-wrap"><table><thead><tr>
+        <th>Market</th><th>Volume</th><th>Fees</th><th>PnL</th><th>Trades</th><th>Fee%</th>
+      </tr></thead><tbody id="xyzTableBody"></tbody></table></div>
+      <div class="section-title">Unit Markets (SOL, ETH, BTC, XPL spot) <span class="badge">Grouped</span></div>
+      <div class="cards" id="unitTotalCards"></div>
+      <div class="table-wrap"><table><thead><tr>
+        <th>Token</th><th>Volume</th><th>Fees</th><th>PnL</th><th>Trades</th><th>Fee%</th>
+      </tr></thead><tbody id="unitTableBody"></tbody></table></div>
+    </div>
+
+    <!-- SPREADS -->
+    <div class="tab-content" id="tab-spreads">
+      <div class="section-title">Spread Strategy Analysis &mdash; XYZ100 &amp; S&P500</div>
+      <p style="color:var(--text2);font-size:0.88em;margin-bottom:16px;">PnL no CSV do Hyperliquid <strong style="color:var(--yellow)">NÃO inclui fees</strong>. O "Net PnL" abaixo = closedPnl - fees (lucro real).</p>
+      <div class="pill-group" id="spreadTimeFilter" style="margin-bottom:16px;">
+        <button class="pill active" data-hours="0">All Time</button>
+        <button class="pill" data-hours="1">1h</button>
+        <button class="pill" data-hours="6">6h</button>
+        <button class="pill" data-hours="24">24h</button>
+        <button class="pill" data-hours="72">3d</button>
+        <button class="pill" data-hours="168">7d</button>
+        <button class="pill" data-hours="720">30d</button>
+      </div>
+      <div class="section-title">Combined (XYZ100 + S&P500)</div>
+      <div class="cards" id="spreadCombinedCards"></div>
+      <div class="section-title">XYZ100</div>
+      <div class="cards" id="spreadXyz100Cards"></div>
+      <div class="section-title">S&P500</div>
+      <div class="cards" id="spreadSp500Cards"></div>
+      <div class="chart-row">
+        <div class="chart-container"><h3>Daily Net PnL (closedPnl - fees)</h3><canvas id="chartSpreadDailyPnl"></canvas></div>
+        <div class="chart-container"><h3>Cumulative Net PnL</h3><canvas id="chartSpreadCumPnl"></canvas></div>
+      </div>
+      <div class="chart-container"><h3>Daily Volume: XYZ100 vs S&P500</h3><canvas id="chartSpreadVolComp"></canvas></div>
+      <div class="section-title">Recent Trades</div>
+      <div class="table-wrap"><div class="table-scroll" style="max-height:400px"><table><thead><tr>
+        <th>Time</th><th>Market</th><th>Direction</th><th>Price</th><th>Size</th><th>Notional</th><th>Fee</th><th>Closed PnL</th><th>Net PnL</th>
+      </tr></thead><tbody id="spreadTradesBody"></tbody></table></div></div>
+    </div>
+
+    <!-- VOLUME 24h -->
+    <div class="tab-content" id="tab-vol24h">
+      <div class="section-title">Last 24 Hours (from last trade)</div>
+      <div class="cards" id="vol24hCards"></div>
+      <div class="chart-container"><h3>Hourly Volume (Last 24h)</h3><canvas id="chart24h"></canvas></div>
+      <div class="table-wrap"><div class="table-scroll"><table><thead><tr>
+        <th>Coin</th><th>Volume</th><th>Fees</th><th>PnL</th><th>Trades</th>
+      </tr></thead><tbody id="vol24hTableBody"></tbody></table></div></div>
+    </div>
+
+    <!-- VOLUME 7d -->
+    <div class="tab-content" id="tab-vol7d">
+      <div class="section-title">Last 7 Days (from last trade)</div>
+      <div class="cards" id="vol7dCards"></div>
+      <div class="chart-container"><h3>Daily Volume (Last 7 Days)</h3><canvas id="chart7d"></canvas></div>
+      <div class="table-wrap"><div class="table-scroll"><table><thead><tr>
+        <th>Coin</th><th>Volume</th><th>Fees</th><th>PnL</th><th>Trades</th>
+      </tr></thead><tbody id="vol7dTableBody"></tbody></table></div></div>
+    </div>
+
+    <!-- ALL TRADES -->
+    <div class="tab-content" id="tab-all-trades">
+      <div class="section-title">Trade Log (last 500 shown)</div>
+      <div class="filter-bar">
+        <input type="text" id="tradeSearch" placeholder="Search...">
+        <select id="tradeCoinFilter"><option value="all">All Coins</option></select>
+        <select id="tradeDirFilter"><option value="all">All Directions</option></select>
+      </div>
+      <div class="table-wrap"><div class="table-scroll" style="max-height:600px">
+        <table><thead><tr>
+          <th>Time</th><th>Coin</th><th>Direction</th><th>Price</th><th>Size</th><th>Notional</th><th>Fee</th><th>PnL</th>
+        </tr></thead><tbody id="tradeLogBody"></tbody></table>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let allTrades = [];
+let charts = {};
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const trades = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(',');
+    if (parts.length < 8) continue;
+    const timeStr = parts[0].trim();
+    const coin = parts[1].trim();
+    const dir = parts[2].trim();
+    const px = parseFloat(parts[3]) || 0;
+    const sz = parseFloat(parts[4]) || 0;
+    const ntl = parseFloat(parts[5]) || 0;
+    const fee = parseFloat(parts[6]) || 0;
+    const pnl = parseFloat(parts[7]) || 0;
+    const [datePart, timePart] = timeStr.split(' - ');
+    if (!datePart || !timePart) continue;
+    const [d, m, y] = datePart.split('/');
+    const ts = new Date(parseInt(y), parseInt(m)-1, parseInt(d), ...timePart.split(':').map(Number));
+    if (isNaN(ts.getTime())) continue;
+    trades.push({ ts, coin, dir, px, sz, ntl, fee, pnl });
+  }
+  trades.sort((a,b) => a.ts - b.ts);
+  return trades;
+}
+
+function getMarketType(coin) {
+  if (coin.includes('(xyz)')) return 'xyz';
+  if (coin.includes('/')) return 'spot';
+  return 'perp';
+}
+
+function getBaseCoin(coin) {
+  return coin.replace(/\/USDC?/g,'').replace(/ \(xyz\)/g,'').trim();
+}
+
+const unitCoins = new Set(['SOL/USDC','ETH/USDC','BTC/USDC','XPL/USDC']);
+function isUnitMarket(coin) {
+  return unitCoins.has(coin);
+}
+
+function fmt(n) {
+  if (Math.abs(n) >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
+  if (Math.abs(n) >= 1e3) return '$' + (n/1e3).toFixed(2) + 'K';
+  return '$' + n.toFixed(2);
+}
+function fmtPnl(n) { return (n >= 0 ? '+' : '-') + fmt(Math.abs(n)); }
+function pnlClass(n) { return n >= 0 ? 'positive' : 'negative'; }
+function pctFmt(n) { return n.toFixed(4) + '%'; }
+
+function computeStats(trades) {
+  const stats = {};
+  trades.forEach(t => {
+    if (!stats[t.coin]) stats[t.coin] = { coin: t.coin, volume: 0, fees: 0, pnl: 0, trades: 0, type: getMarketType(t.coin) };
+    stats[t.coin].volume += t.ntl;
+    stats[t.coin].fees += t.fee;
+    stats[t.coin].pnl += t.pnl;
+    stats[t.coin].trades++;
+  });
+  Object.values(stats).forEach(s => { s.feePct = s.volume > 0 ? (s.fees / s.volume) * 100 : 0; s.netPnl = s.pnl - s.fees; });
+  return stats;
+}
+
+function filterByTime(trades, hours) {
+  const now = trades.length ? trades[trades.length - 1].ts : new Date();
+  const cutoff = new Date(now.getTime() - hours * 3600000);
+  return trades.filter(t => t.ts >= cutoff);
+}
+
+function renderCards(id, data) {
+  document.getElementById(id).innerHTML = data.map(d =>
+    '<div class="card"><div class="card-label">' + d.label + '</div><div class="card-value ' + (d.cls||'') + '">' + d.value + '</div>' + (d.sub ? '<div class="card-sub">' + d.sub + '</div>' : '') + '</div>'
+  ).join('');
+}
+
+function renderTable(tbodyId, rows, columns) {
+  document.getElementById(tbodyId).innerHTML = rows.map(r => {
+    return '<tr class="' + (r._group ? 'group-row' : '') + '">' + columns.map(c => '<td>' + (c.render ? c.render(r) : r[c.key]) + '</td>').join('') + '</tr>';
+  }).join('');
+}
+
+// ===== OVERVIEW =====
+let currentSort = { col: 'volume', asc: false };
+let currentTypeFilter = 'all';
+let currentSearch = '';
+
+function renderOverview() {
+  const stats = computeStats(allTrades);
+  const vals = Object.values(stats);
+  const totalVol = vals.reduce((s,c) => s + c.volume, 0);
+  const totalFees = vals.reduce((s,c) => s + c.fees, 0);
+  const totalPnl = vals.reduce((s,c) => s + c.pnl, 0);
+
+  document.getElementById('timeRange').innerHTML =
+    '<span>Period: <strong>' + allTrades[0].ts.toLocaleDateString() + '</strong> to <strong>' + allTrades[allTrades.length-1].ts.toLocaleDateString() + '</strong></span>' +
+    '<span>Total trades: <strong>' + allTrades.length.toLocaleString() + '</strong></span>';
+
+  renderCards('overviewCards', [
+    { label: 'Total Volume', value: fmt(totalVol) },
+    { label: 'Total Fees', value: fmt(totalFees), cls: 'negative' },
+    { label: 'Closed PnL', value: fmtPnl(totalPnl), cls: pnlClass(totalPnl), sub: 'Sem descontar fees' },
+    { label: 'Net PnL', value: fmtPnl(totalPnl - totalFees), cls: pnlClass(totalPnl - totalFees), sub: 'closedPnl - fees' },
+    { label: 'Unique Coins', value: vals.length },
+    { label: 'Avg Trade', value: fmt(totalVol / allTrades.length) },
+  ]);
+
+  renderCoinTable(stats);
+  renderVolumeChart(stats);
+  renderPnlChart(stats);
+  renderCumPnlChart();
+}
+
+function renderCoinTable(stats) {
+  let rows = Object.values(stats);
+  if (currentTypeFilter !== 'all') rows = rows.filter(r => r.type === currentTypeFilter);
+  if (currentSearch) rows = rows.filter(r => r.coin.toLowerCase().includes(currentSearch.toLowerCase()));
+  rows.sort((a,b) => {
+    let va = a[currentSort.col], vb = b[currentSort.col];
+    if (typeof va === 'string') return currentSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return currentSort.asc ? va - vb : vb - va;
+  });
+  const cols = [
+    { key: 'coin' },
+    { key: 'type', render: r => '<span style="color:' + (r.type==='spot'?'var(--blue)':r.type==='xyz'?'var(--orange)':'var(--accent2)') + '">' + r.type.toUpperCase() + '</span>' },
+    { key: 'volume', render: r => fmt(r.volume) },
+    { key: 'fees', render: r => '<span class="negative">' + fmt(r.fees) + '</span>' },
+    { key: 'pnl', render: r => '<span class="' + pnlClass(r.pnl) + '">' + fmtPnl(r.pnl) + '</span>' },
+    { key: 'netPnl', render: r => '<span class="' + pnlClass(r.netPnl) + '">' + fmtPnl(r.netPnl) + '</span>' },
+    { key: 'trades', render: r => r.trades.toLocaleString() },
+    { key: 'feePct', render: r => pctFmt(r.feePct) },
+  ];
+  renderTable('coinTableBody', rows, cols);
+}
+
+function renderVolumeChart(stats) {
+  const sorted = Object.values(stats).sort((a,b) => b.volume - a.volume).slice(0, 10);
+  if (charts.volume) charts.volume.destroy();
+  charts.volume = new Chart(document.getElementById('chartVolume'), {
+    type: 'bar',
+    data: { labels: sorted.map(s=>s.coin), datasets: [{ label: 'Volume', data: sorted.map(s=>s.volume), backgroundColor: 'rgba(108,92,231,0.7)', borderRadius: 6 }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#8888aa', callback: v => fmt(v) }, grid: { color: '#2a2a42' } }, x: { ticks: { color: '#8888aa', maxRotation: 45 }, grid: { display: false } } } }
+  });
+}
+
+function renderPnlChart(stats) {
+  const sorted = Object.values(stats).filter(s => s.pnl !== 0).sort((a,b) => b.pnl - a.pnl);
+  if (charts.pnl) charts.pnl.destroy();
+  charts.pnl = new Chart(document.getElementById('chartPnl'), {
+    type: 'bar',
+    data: { labels: sorted.map(s=>s.coin), datasets: [{ label: 'PnL', data: sorted.map(s=>s.pnl), backgroundColor: sorted.map(s => s.pnl >= 0 ? 'rgba(0,230,118,0.7)' : 'rgba(255,82,82,0.7)'), borderRadius: 6 }] },
+    options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8888aa', callback: v => fmt(v) }, grid: { color: '#2a2a42' } }, y: { ticks: { color: '#ccc', font: { size: 11 } }, grid: { display: false } } } }
+  });
+}
+
+function renderCumPnlChart() {
+  let cum = 0;
+  const daily = {};
+  allTrades.forEach(t => {
+    const day = t.ts.toISOString().slice(0,10);
+    if (!daily[day]) daily[day] = 0;
+    daily[day] += t.pnl;
+  });
+  const points = [];
+  Object.keys(daily).sort().forEach(day => { cum += daily[day]; points.push({ x: day, y: cum }); });
+  if (charts.cumPnl) charts.cumPnl.destroy();
+  charts.cumPnl = new Chart(document.getElementById('chartCumPnl'), {
+    type: 'line',
+    data: { labels: points.map(p=>p.x), datasets: [{ label: 'Cumulative PnL', data: points.map(p=>p.y), borderColor: 'rgba(108,92,231,1)', backgroundColor: 'rgba(108,92,231,0.1)', fill: true, tension: 0.3, pointRadius: 2 }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#8888aa', callback: v => fmt(v) }, grid: { color: '#2a2a42' } }, x: { ticks: { color: '#8888aa', maxTicksLimit: 15 }, grid: { display: false } } } }
+  });
+}
+
+// ===== XYZ & UNIT =====
+function renderXyzUnit() {
+  const xyzTrades = allTrades.filter(t => getMarketType(t.coin) === 'xyz');
+  const unitTrades = allTrades.filter(t => isUnitMarket(t.coin));
+  const xyzStats = computeStats(xyzTrades);
+  const unitStats = computeStats(unitTrades);
+
+  function sumStats(stats) {
+    const t = { volume: 0, fees: 0, pnl: 0, trades: 0 };
+    Object.values(stats).forEach(s => { t.volume += s.volume; t.fees += s.fees; t.pnl += s.pnl; t.trades += s.trades; });
+    return t;
+  }
+
+  const xyzT = sumStats(xyzStats);
+  renderCards('xyzTotalCards', [
+    { label: 'XYZ Total Volume', value: fmt(xyzT.volume) },
+    { label: 'XYZ Total Fees', value: fmt(xyzT.fees), cls: 'negative' },
+    { label: 'XYZ Net PnL', value: fmtPnl(xyzT.pnl), cls: pnlClass(xyzT.pnl) },
+    { label: 'XYZ Trades', value: xyzT.trades.toLocaleString() },
+    { label: 'Fee/Vol', value: xyzT.volume > 0 ? pctFmt((xyzT.fees/xyzT.volume)*100) : '0%' },
+  ]);
+
+  const cols = [
+    { key: 'coin' },
+    { key: 'volume', render: r => fmt(r.volume) },
+    { key: 'fees', render: r => '<span class="negative">' + fmt(r.fees) + '</span>' },
+    { key: 'pnl', render: r => '<span class="' + pnlClass(r.pnl) + '">' + fmtPnl(r.pnl) + '</span>' },
+    { key: 'trades', render: r => r.trades.toLocaleString() },
+    { key: 'feePct', render: r => pctFmt(r.feePct || 0) },
+  ];
+
+  let xyzRows = Object.values(xyzStats).sort((a,b) => b.volume - a.volume);
+  xyzRows.push({ coin: 'TOTAL XYZ', volume: xyzT.volume, fees: xyzT.fees, pnl: xyzT.pnl, trades: xyzT.trades, feePct: xyzT.volume > 0 ? (xyzT.fees/xyzT.volume)*100 : 0, _group: true });
+  renderTable('xyzTableBody', xyzRows, cols);
+
+  const unitT = sumStats(unitStats);
+  renderCards('unitTotalCards', [
+    { label: 'Unit Total Volume', value: fmt(unitT.volume) },
+    { label: 'Unit Total Fees', value: fmt(unitT.fees), cls: 'negative' },
+    { label: 'Unit Net PnL', value: fmtPnl(unitT.pnl), cls: pnlClass(unitT.pnl) },
+    { label: 'Unit Trades', value: unitT.trades.toLocaleString() },
+    { label: 'Fee/Vol', value: unitT.volume > 0 ? pctFmt((unitT.fees/unitT.volume)*100) : '0%' },
+  ]);
+
+  let unitRows = Object.values(unitStats).sort((a,b) => b.volume - a.volume);
+  unitRows.push({ coin: 'TOTAL UNIT', volume: unitT.volume, fees: unitT.fees, pnl: unitT.pnl, trades: unitT.trades, feePct: unitT.volume > 0 ? (unitT.fees/unitT.volume)*100 : 0, _group: true });
+  renderTable('unitTableBody', unitRows, cols);
+}
+
+// ===== SPREADS (XYZ100 & S&P500) =====
+const SPREAD_COINS = ['XYZ100 (xyz)', 'S&P500 (xyz)'];
+let spreadTimeHours = 0; // 0 = all time
+
+function getSpreadTrades(hours) {
+  let trades = allTrades.filter(t => SPREAD_COINS.includes(t.coin));
+  if (hours > 0) {
+    const now = allTrades.length ? allTrades[allTrades.length - 1].ts : new Date();
+    const cutoff = new Date(now.getTime() - hours * 3600000);
+    trades = trades.filter(t => t.ts >= cutoff);
+  }
+  return trades;
+}
+
+function calcSpreadStats(trades) {
+  const vol = trades.reduce((s,t) => s + t.ntl, 0);
+  const fees = trades.reduce((s,t) => s + t.fee, 0);
+  const closedPnl = trades.reduce((s,t) => s + t.pnl, 0);
+  const netPnl = closedPnl - fees;
+  return { vol, fees, closedPnl, netPnl, count: trades.length };
+}
+
+function renderSpreads() {
+  const trades = getSpreadTrades(spreadTimeHours);
+  const xyz100 = trades.filter(t => t.coin === 'XYZ100 (xyz)');
+  const sp500 = trades.filter(t => t.coin === 'S&P500 (xyz)');
+
+  const xyz100S = calcSpreadStats(xyz100);
+  const sp500S = calcSpreadStats(sp500);
+  const combined = calcSpreadStats(trades);
+
+  function makeCards(s, prefix) {
+    return [
+      { label: prefix + ' Volume', value: fmt(s.vol) },
+      { label: prefix + ' Trades', value: s.count.toLocaleString() },
+      { label: 'Closed PnL', value: fmtPnl(s.closedPnl), cls: pnlClass(s.closedPnl), sub: 'Sem descontar fees' },
+      { label: 'Fees', value: fmt(s.fees), cls: 'negative' },
+      { label: 'Net PnL', value: fmtPnl(s.netPnl), cls: pnlClass(s.netPnl), sub: 'closedPnl - fees' },
+      { label: 'Fee/Vol', value: s.vol > 0 ? pctFmt((s.fees/s.vol)*100) : '0%' },
+    ];
+  }
+
+  renderCards('spreadCombinedCards', makeCards(combined, 'Total'));
+  renderCards('spreadXyz100Cards', makeCards(xyz100S, 'XYZ100'));
+  renderCards('spreadSp500Cards', makeCards(sp500S, 'S&P500'));
+
+  // Daily Net PnL chart
+  const dailyXyz = {}, dailySp = {};
+  xyz100.forEach(t => { const d = t.ts.toISOString().slice(0,10); dailyXyz[d] = (dailyXyz[d]||0) + (t.pnl - t.fee); });
+  sp500.forEach(t => { const d = t.ts.toISOString().slice(0,10); dailySp[d] = (dailySp[d]||0) + (t.pnl - t.fee); });
+  const allDays = [...new Set([...Object.keys(dailyXyz), ...Object.keys(dailySp)])].sort();
+
+  if (charts.spreadDailyPnl) charts.spreadDailyPnl.destroy();
+  charts.spreadDailyPnl = new Chart(document.getElementById('chartSpreadDailyPnl'), {
+    type: 'bar',
+    data: { labels: allDays.map(d => d.slice(5)), datasets: [
+      { label: 'XYZ100', data: allDays.map(d => dailyXyz[d]||0), backgroundColor: 'rgba(255,145,0,0.7)', borderRadius: 4 },
+      { label: 'S&P500', data: allDays.map(d => dailySp[d]||0), backgroundColor: 'rgba(108,92,231,0.7)', borderRadius: 4 },
+    ]},
+    options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } }, scales: { y: { ticks: { color: '#8888aa', callback: v => fmt(v) }, grid: { color: '#2a2a42' } }, x: { ticks: { color: '#8888aa' }, grid: { display: false } } } }
+  });
+
+  // Cumulative Net PnL chart
+  let cumXyz = 0, cumSp = 0, cumTotal = 0;
+  const cumPoints = allDays.map(d => {
+    cumXyz += (dailyXyz[d]||0); cumSp += (dailySp[d]||0); cumTotal = cumXyz + cumSp;
+    return { d, cumXyz, cumSp, cumTotal };
+  });
+  if (charts.spreadCumPnl) charts.spreadCumPnl.destroy();
+  charts.spreadCumPnl = new Chart(document.getElementById('chartSpreadCumPnl'), {
+    type: 'line',
+    data: { labels: cumPoints.map(p => p.d.slice(5)), datasets: [
+      { label: 'Combined', data: cumPoints.map(p => p.cumTotal), borderColor: '#ffd740', backgroundColor: 'rgba(255,215,64,0.08)', fill: true, tension: 0.3, pointRadius: 2 },
+      { label: 'XYZ100', data: cumPoints.map(p => p.cumXyz), borderColor: '#ff9100', tension: 0.3, pointRadius: 1, borderWidth: 1.5 },
+      { label: 'S&P500', data: cumPoints.map(p => p.cumSp), borderColor: '#6c5ce7', tension: 0.3, pointRadius: 1, borderWidth: 1.5 },
+    ]},
+    options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } }, scales: { y: { ticks: { color: '#8888aa', callback: v => fmt(v) }, grid: { color: '#2a2a42' } }, x: { ticks: { color: '#8888aa', maxTicksLimit: 12 }, grid: { display: false } } } }
+  });
+
+  // Volume comparison chart
+  const dailyVolXyz = {}, dailyVolSp = {};
+  xyz100.forEach(t => { const d = t.ts.toISOString().slice(0,10); dailyVolXyz[d] = (dailyVolXyz[d]||0) + t.ntl; });
+  sp500.forEach(t => { const d = t.ts.toISOString().slice(0,10); dailyVolSp[d] = (dailyVolSp[d]||0) + t.ntl; });
+  if (charts.spreadVolComp) charts.spreadVolComp.destroy();
+  charts.spreadVolComp = new Chart(document.getElementById('chartSpreadVolComp'), {
+    type: 'bar',
+    data: { labels: allDays.map(d => d.slice(5)), datasets: [
+      { label: 'XYZ100', data: allDays.map(d => dailyVolXyz[d]||0), backgroundColor: 'rgba(255,145,0,0.6)', borderRadius: 4 },
+      { label: 'S&P500', data: allDays.map(d => dailyVolSp[d]||0), backgroundColor: 'rgba(108,92,231,0.6)', borderRadius: 4 },
+    ]},
+    options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } }, scales: { y: { stacked: true, ticks: { color: '#8888aa', callback: v => fmt(v) }, grid: { color: '#2a2a42' } }, x: { stacked: true, ticks: { color: '#8888aa' }, grid: { display: false } } } }
+  });
+
+  // Recent trades table
+  const recent = [...trades].reverse().slice(0, 200);
+  const cols = [
+    { key: 'ts', render: r => r.ts.toLocaleString() },
+    { key: 'coin', render: r => '<span style="color:' + (r.coin.includes('XYZ100') ? 'var(--orange)' : 'var(--accent2)') + '">' + r.coin + '</span>' },
+    { key: 'dir', render: r => { const c = r.dir.includes('Long') ? 'var(--green)' : 'var(--red)'; return '<span style="color:' + c + '">' + r.dir + '</span>'; }},
+    { key: 'px', render: r => r.px.toFixed(2) },
+    { key: 'sz', render: r => r.sz.toLocaleString() },
+    { key: 'ntl', render: r => fmt(r.ntl) },
+    { key: 'fee', render: r => '<span class="negative">' + fmt(r.fee) + '</span>' },
+    { key: 'pnl', render: r => '<span class="' + pnlClass(r.pnl) + '">' + fmtPnl(r.pnl) + '</span>' },
+    { key: 'net', render: r => { const n = r.pnl - r.fee; return '<span class="' + pnlClass(n) + '">' + fmtPnl(n) + '</span>'; }},
+  ];
+  renderTable('spreadTradesBody', recent, cols);
+}
+
+// ===== VOLUME TABS =====
+function renderVolTab(trades, cardsId, chartId, tbodyId, groupByHour) {
+  const stats = computeStats(trades);
+  const vals = Object.values(stats);
+  const totalVol = vals.reduce((s,c) => s + c.volume, 0);
+  const totalFees = vals.reduce((s,c) => s + c.fees, 0);
+  const totalPnl = vals.reduce((s,c) => s + c.pnl, 0);
+
+  renderCards(cardsId, [
+    { label: 'Volume', value: fmt(totalVol) },
+    { label: 'Fees', value: fmt(totalFees), cls: 'negative' },
+    { label: 'PnL', value: fmtPnl(totalPnl), cls: pnlClass(totalPnl) },
+    { label: 'Trades', value: trades.length.toLocaleString() },
+    { label: 'Fee/Vol', value: totalVol > 0 ? pctFmt((totalFees/totalVol)*100) : '0%' },
+    { label: 'PnL/Vol', value: totalVol > 0 ? pctFmt((totalPnl/totalVol)*100) : '0%' },
+  ]);
+
+  const grouped = {};
+  trades.forEach(t => {
+    const key = groupByHour ? t.ts.toISOString().slice(0,13) + ':00' : t.ts.toISOString().slice(0,10);
+    if (!grouped[key]) grouped[key] = 0;
+    grouped[key] += t.ntl;
+  });
+  const labels = Object.keys(grouped).sort();
+  const data = labels.map(l => grouped[l]);
+
+  if (charts[chartId]) charts[chartId].destroy();
+  charts[chartId] = new Chart(document.getElementById(chartId), {
+    type: 'bar',
+    data: { labels: labels.map(l => groupByHour ? l.slice(11) : l.slice(5)), datasets: [{ label: 'Volume', data, backgroundColor: 'rgba(108,92,231,0.7)', borderRadius: 4 }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#8888aa', callback: v => fmt(v) }, grid: { color: '#2a2a42' } }, x: { ticks: { color: '#8888aa' }, grid: { display: false } } } }
+  });
+
+  let rows = vals.sort((a,b) => b.volume - a.volume);
+  const cols = [
+    { key: 'coin' },
+    { key: 'volume', render: r => fmt(r.volume) },
+    { key: 'fees', render: r => '<span class="negative">' + fmt(r.fees) + '</span>' },
+    { key: 'pnl', render: r => '<span class="' + pnlClass(r.pnl) + '">' + fmtPnl(r.pnl) + '</span>' },
+    { key: 'trades', render: r => r.trades.toLocaleString() },
+  ];
+  renderTable(tbodyId, rows, cols);
+}
+
+// ===== TRADE LOG =====
+function renderTradeLog() {
+  let trades = [...allTrades].reverse();
+  const coinF = document.getElementById('tradeCoinFilter').value;
+  const dirF = document.getElementById('tradeDirFilter').value;
+  const search = document.getElementById('tradeSearch').value.toLowerCase();
+  if (coinF !== 'all') trades = trades.filter(t => t.coin === coinF);
+  if (dirF !== 'all') trades = trades.filter(t => t.dir === dirF);
+  if (search) trades = trades.filter(t => t.coin.toLowerCase().includes(search) || t.dir.toLowerCase().includes(search));
+  trades = trades.slice(0, 500);
+  const cols = [
+    { key: 'ts', render: r => r.ts.toLocaleString() },
+    { key: 'coin' },
+    { key: 'dir', render: r => { const c = r.dir.includes('Long') || r.dir === 'Buy' ? 'var(--green)' : 'var(--red)'; return '<span style="color:' + c + '">' + r.dir + '</span>'; }},
+    { key: 'px', render: r => r.px > 100 ? r.px.toFixed(2) : r.px.toFixed(6) },
+    { key: 'sz', render: r => r.sz.toLocaleString() },
+    { key: 'ntl', render: r => fmt(r.ntl) },
+    { key: 'fee', render: r => '<span class="negative">' + fmt(r.fee) + '</span>' },
+    { key: 'pnl', render: r => '<span class="' + pnlClass(r.pnl) + '">' + fmtPnl(r.pnl) + '</span>' },
+  ];
+  renderTable('tradeLogBody', trades, cols);
+}
+
+// ===== INIT =====
+document.getElementById('uploadArea').addEventListener('click', () => document.getElementById('csvFile').click());
+document.getElementById('uploadArea').addEventListener('dragover', e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--accent)'; });
+document.getElementById('uploadArea').addEventListener('dragleave', e => { e.currentTarget.style.borderColor = ''; });
+document.getElementById('uploadArea').addEventListener('drop', e => { e.preventDefault(); e.currentTarget.style.borderColor = ''; if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+document.getElementById('csvFile').addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    allTrades = parseCSV(e.target.result);
+    if (!allTrades.length) { alert('No trades found'); return; }
+    document.getElementById('uploadArea').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    renderOverview();
+    renderXyzUnit();
+    renderSpreads();
+    renderVolTab(filterByTime(allTrades, 24), 'vol24hCards', 'chart24h', 'vol24hTableBody', true);
+    renderVolTab(filterByTime(allTrades, 168), 'vol7dCards', 'chart7d', 'vol7dTableBody', false);
+    // Populate filters
+    const coins = [...new Set(allTrades.map(t => t.coin))].sort();
+    const dirs = [...new Set(allTrades.map(t => t.dir))].sort();
+    const cs = document.getElementById('tradeCoinFilter'), ds = document.getElementById('tradeDirFilter');
+    coins.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; cs.appendChild(o); });
+    dirs.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; ds.appendChild(o); });
+    renderTradeLog();
+  };
+  reader.readAsText(file);
+}
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Filters
+document.getElementById('marketTypeFilter').addEventListener('click', e => {
+  if (!e.target.classList.contains('pill')) return;
+  document.querySelectorAll('#marketTypeFilter .pill').forEach(p => p.classList.remove('active'));
+  e.target.classList.add('active');
+  currentTypeFilter = e.target.dataset.type;
+  renderCoinTable(computeStats(allTrades));
+});
+document.getElementById('coinSearch').addEventListener('input', e => { currentSearch = e.target.value; renderCoinTable(computeStats(allTrades)); });
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.sort;
+    currentSort = { col, asc: currentSort.col === col ? !currentSort.asc : false };
+    renderCoinTable(computeStats(allTrades));
+  });
+});
+['tradeCoinFilter','tradeDirFilter','tradeSearch'].forEach(id => {
+  document.getElementById(id).addEventListener('change', renderTradeLog);
+  document.getElementById(id).addEventListener('input', renderTradeLog);
+});
+
+// Spread time filter
+document.getElementById('spreadTimeFilter').addEventListener('click', e => {
+  if (!e.target.classList.contains('pill')) return;
+  document.querySelectorAll('#spreadTimeFilter .pill').forEach(p => p.classList.remove('active'));
+  e.target.classList.add('active');
+  spreadTimeHours = parseInt(e.target.dataset.hours);
+  renderSpreads();
+});
+</script>
+</body>
+</html>
