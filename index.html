@@ -116,6 +116,7 @@ tbody tr.group-row td { border-top: 2px solid var(--accent); padding: 12px 14px;
       <button class="tab-btn" data-tab="vol24h">Volume 24h</button>
       <button class="tab-btn" data-tab="vol7d">Volume 7d</button>
       <button class="tab-btn" data-tab="all-trades">All Trades</button>
+      <button class="tab-btn" data-tab="xyz-points">⭐ XYZ Points</button>
     </div>
 
     <!-- OVERVIEW -->
@@ -227,6 +228,65 @@ tbody tr.group-row td { border-top: 2px solid var(--accent); padding: 12px 14px;
         <table><thead><tr>
           <th>Time</th><th>Coin</th><th>Direction</th><th>Price</th><th>Size</th><th>Notional</th><th>Fee</th><th>PnL</th>
         </tr></thead><tbody id="tradeLogBody"></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- XYZ POINTS -->
+    <div class="tab-content" id="tab-xyz-points">
+      <div class="section-title">⭐ XYZ Airdrop Points Simulator</div>
+      <p style="color:var(--text2);font-size:0.88em;margin-bottom:8px;">Estimativa de pontos acumulados nos mercados XYZ com base nas métricas mais usadas por perp DEXes para airdrops. Ajuste os pesos para simular diferentes fórmulas.</p>
+      <div style="background:rgba(255,215,64,0.07);border:1px solid rgba(255,215,64,0.25);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:0.82em;color:var(--yellow);">
+        ⚠️ Simulação especulativa — pesos e fórmulas são estimativas baseadas em programas conhecidos (Hyperliquid, dYdX, Vertex, etc). Não representa garantia de airdrop.
+      </div>
+
+      <!-- Weight sliders -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
+        <div style="font-size:0.9em;font-weight:600;margin-bottom:14px;color:var(--text)">Fórmula de Pontos — Ajuste os Pesos</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">
+          <div>
+            <label style="font-size:0.8em;color:var(--text2)">Peso do Volume: <strong id="wVolLabel" style="color:var(--accent2)">1.0×</strong></label>
+            <input type="range" id="wVol" min="0" max="3" step="0.1" value="1.0" style="width:100%;margin-top:6px;accent-color:var(--accent)">
+            <div style="font-size:0.72em;color:var(--text2);margin-top:2px">Pontos = Volume × peso</div>
+          </div>
+          <div>
+            <label style="font-size:0.8em;color:var(--text2)">Peso do OI×Tempo: <strong id="wOiLabel" style="color:var(--orange)">2.0×</strong></label>
+            <input type="range" id="wOi" min="0" max="5" step="0.1" value="2.0" style="width:100%;margin-top:6px;accent-color:var(--orange)">
+            <div style="font-size:0.72em;color:var(--text2);margin-top:2px">Pontos = (Notional × Horas abertas) × peso</div>
+          </div>
+          <div>
+            <label style="font-size:0.8em;color:var(--text2)">Peso das Fees: <strong id="wFeeLabel" style="color:var(--green)">5.0×</strong></label>
+            <input type="range" id="wFee" min="0" max="20" step="0.5" value="5.0" style="width:100%;margin-top:6px;accent-color:var(--green)">
+            <div style="font-size:0.72em;color:var(--text2);margin-top:2px">Pontos = Fees pagas × peso</div>
+          </div>
+          <div>
+            <label style="font-size:0.8em;color:var(--text2)">Peso do Nº de Trades: <strong id="wTradesLabel" style="color:var(--blue)">0.5×</strong></label>
+            <input type="range" id="wTrades" min="0" max="5" step="0.1" value="0.5" style="width:100%;margin-top:6px;accent-color:var(--blue)">
+            <div style="font-size:0.72em;color:var(--text2);margin-top:2px">Pontos = Nº de trades × peso</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="cards" id="pointsCards"></div>
+
+      <!-- Breakdown cards per coin -->
+      <div class="section-title">Por Mercado XYZ</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:20px;" id="pointsCoinCards"></div>
+
+      <!-- Charts -->
+      <div class="chart-row">
+        <div class="chart-container"><h3>Pontos Acumulados por Dia</h3><canvas id="chartPointsDaily"></canvas></div>
+        <div class="chart-container"><h3>Composição dos Pontos</h3><canvas id="chartPointsBreakdown"></canvas></div>
+      </div>
+      <div class="chart-container"><h3>Curva Cumulativa de Pontos</h3><canvas id="chartPointsCum"></canvas></div>
+
+      <!-- Position duration table -->
+      <div class="section-title">Posições Abertas e Fechadas (OI × Tempo)</div>
+      <p style="color:var(--text2);font-size:0.82em;margin-bottom:12px;">Match de Open→Close para calcular tempo de cada posição. Posições ainda abertas usam o timestamp do último trade como referência.</p>
+      <div class="table-wrap"><div class="table-scroll" style="max-height:400px">
+        <table><thead><tr>
+          <th>Market</th><th>Side</th><th>Open Time</th><th>Close Time</th><th>Duration (h)</th><th>Avg Notional</th><th>OI-Hours</th><th>Points</th>
+        </tr></thead><tbody id="positionsTableBody"></tbody></table>
       </div></div>
     </div>
   </div>
@@ -680,6 +740,7 @@ function loadFile(file) {
     coins.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; cs.appendChild(o); });
     dirs.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; ds.appendChild(o); });
     renderTradeLog();
+    renderXyzPoints();
   };
   reader.readAsText(file);
 }
@@ -722,6 +783,195 @@ document.getElementById('spreadTimeFilter').addEventListener('click', e => {
   e.target.classList.add('active');
   spreadTimeHours = parseInt(e.target.dataset.hours);
   renderSpreads();
+});
+
+// ===== XYZ POINTS =====
+function buildPositions(trades) {
+  // Match Open→Close per coin per side to compute duration
+  // We track a stack of open positions per (coin, side)
+  const openStacks = {}; // key = coin + side
+  const positions = [];
+  const lastTs = trades.length ? trades[trades.length - 1].ts : new Date();
+
+  trades.forEach(t => {
+    const isOpen = t.dir.toLowerCase().startsWith('open ') || t.dir.toLowerCase().includes('long > short') || t.dir.toLowerCase().includes('short > long');
+    const isClose = t.dir.toLowerCase().startsWith('close ') || t.dir.toLowerCase().includes('liquidation');
+    const isLong = t.dir.toLowerCase().includes('long') || t.dir === 'Buy';
+
+    if (isOpen) {
+      const key = t.coin + '|' + (isLong ? 'long' : 'short');
+      if (!openStacks[key]) openStacks[key] = [];
+      openStacks[key].push({ openTs: t.ts, coin: t.coin, side: isLong ? 'Long' : 'Short', notional: t.ntl, openFee: t.fee });
+    } else if (isClose) {
+      const isClosingLong = t.dir.toLowerCase().includes('long');
+      const key = t.coin + '|' + (isClosingLong ? 'long' : 'short');
+      if (openStacks[key] && openStacks[key].length > 0) {
+        const open = openStacks[key].shift();
+        const durationHours = (t.ts - open.openTs) / 3600000;
+        const avgNotional = (open.notional + t.ntl) / 2;
+        const oiHours = avgNotional * durationHours;
+        positions.push({ coin: t.coin, side: open.side, openTs: open.openTs, closeTs: t.ts, durationHours, avgNotional, oiHours, openFee: open.openFee, closeFee: t.fee, closed: true });
+      }
+    }
+  });
+
+  // Any still-open positions: use lastTs as close estimate
+  Object.entries(openStacks).forEach(([key, stack]) => {
+    stack.forEach(open => {
+      const durationHours = (lastTs - open.openTs) / 3600000;
+      const oiHours = open.notional * durationHours;
+      positions.push({ coin: open.coin, side: open.side, openTs: open.openTs, closeTs: null, durationHours, avgNotional: open.notional, oiHours, openFee: open.openFee, closeFee: 0, closed: false });
+    });
+  });
+
+  return positions;
+}
+
+function fmtNum(n) {
+  if (Math.abs(n) >= 1e9) return (n/1e9).toFixed(2) + 'B';
+  if (Math.abs(n) >= 1e6) return (n/1e6).toFixed(2) + 'M';
+  if (Math.abs(n) >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toFixed(0);
+}
+
+function renderXyzPoints() {
+  const wVol    = parseFloat(document.getElementById('wVol').value);
+  const wOi     = parseFloat(document.getElementById('wOi').value);
+  const wFee    = parseFloat(document.getElementById('wFee').value);
+  const wTrades = parseFloat(document.getElementById('wTrades').value);
+  document.getElementById('wVolLabel').textContent    = wVol.toFixed(1) + '×';
+  document.getElementById('wOiLabel').textContent     = wOi.toFixed(1) + '×';
+  document.getElementById('wFeeLabel').textContent    = wFee.toFixed(1) + '×';
+  document.getElementById('wTradesLabel').textContent = wTrades.toFixed(1) + '×';
+
+  const xyzTrades = allTrades.filter(t => getMarketType(t.coin) === 'xyz');
+  const positions = buildPositions(xyzTrades);
+
+  // Aggregate per coin
+  const coinData = {};
+  xyzTrades.forEach(t => {
+    if (!coinData[t.coin]) coinData[t.coin] = { vol: 0, fees: 0, count: 0, oiHours: 0 };
+    coinData[t.coin].vol   += t.ntl;
+    coinData[t.coin].fees  += t.fee;
+    coinData[t.coin].count += 1;
+  });
+  positions.forEach(p => {
+    if (!coinData[p.coin]) coinData[p.coin] = { vol: 0, fees: 0, count: 0, oiHours: 0 };
+    coinData[p.coin].oiHours += p.oiHours;
+  });
+
+  // Total metrics
+  const totVol      = xyzTrades.reduce((s,t) => s + t.ntl, 0);
+  const totFees     = xyzTrades.reduce((s,t) => s + t.fee, 0);
+  const totTrades   = xyzTrades.length;
+  const totOiHours  = positions.reduce((s,p) => s + p.oiHours, 0);
+
+  const ptVol    = totVol    * wVol;
+  const ptOi     = totOiHours * wOi;
+  const ptFee    = totFees   * wFee;
+  const ptTrades = totTrades * wTrades;
+  const ptTotal  = ptVol + ptOi + ptFee + ptTrades;
+
+  renderCards('pointsCards', [
+    { label: 'Total XYZ Volume', value: fmt(totVol) },
+    { label: 'Total OI-Hours', value: fmtNum(totOiHours), sub: 'Notional × horas abertas' },
+    { label: 'Total Fees Pagas', value: fmt(totFees) },
+    { label: 'Total Trades XYZ', value: totTrades.toLocaleString() },
+    { label: '⭐ Pontos Estimados', value: fmtNum(ptTotal), cls: 'positive', sub: 'Com pesos atuais' },
+    { label: 'Avg Pos Duration', value: positions.length ? (positions.reduce((s,p)=>s+p.durationHours,0)/positions.length).toFixed(1) + 'h' : '-' },
+  ]);
+
+  // Per-coin breakdown cards
+  const coinEntries = Object.entries(coinData).sort((a,b) => b[1].vol - a[1].vol);
+  document.getElementById('pointsCoinCards').innerHTML = coinEntries.map(([coin, d]) => {
+    const pt = d.vol * wVol + d.oiHours * wOi + d.fees * wFee + d.count * wTrades;
+    const color = coin.includes('XYZ100') ? 'var(--orange)' : 'var(--accent2)';
+    return `<div class="spread-group">
+      <div class="spread-header">
+        <div class="spread-name" style="color:${color}">${coin}</div>
+        <div style="color:var(--yellow);font-weight:700">⭐ ${fmtNum(pt)} pts</div>
+      </div>
+      <div class="spread-stats">
+        <div class="spread-stat"><div class="spread-stat-label">Volume</div><div class="spread-stat-value">${fmt(d.vol)}</div></div>
+        <div class="spread-stat"><div class="spread-stat-label">OI-Hours</div><div class="spread-stat-value">${fmtNum(d.oiHours)}</div></div>
+        <div class="spread-stat"><div class="spread-stat-label">Fees</div><div class="spread-stat-value negative">${fmt(d.fees)}</div></div>
+        <div class="spread-stat"><div class="spread-stat-label">Trades</div><div class="spread-stat-value">${d.count.toLocaleString()}</div></div>
+        <div class="spread-stat" style="border:1px solid var(--yellow)"><div class="spread-stat-label">Pts Vol</div><div class="spread-stat-value positive">${fmtNum(d.vol*wVol)}</div></div>
+        <div class="spread-stat" style="border:1px solid var(--yellow)"><div class="spread-stat-label">Pts OI×t</div><div class="spread-stat-value positive">${fmtNum(d.oiHours*wOi)}</div></div>
+        <div class="spread-stat" style="border:1px solid var(--yellow)"><div class="spread-stat-label">Pts Fees</div><div class="spread-stat-value positive">${fmtNum(d.fees*wFee)}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Daily points chart
+  const daily = {};
+  xyzTrades.forEach(t => {
+    const d = t.ts.toISOString().slice(0,10);
+    if (!daily[d]) daily[d] = { vol: 0, fees: 0, count: 0, oiHours: 0 };
+    daily[d].vol   += t.ntl;
+    daily[d].fees  += t.fee;
+    daily[d].count += 1;
+  });
+  // Add OI-hours to daily (by close date)
+  positions.forEach(p => {
+    const d = (p.closeTs || p.openTs).toISOString().slice(0,10);
+    if (!daily[d]) daily[d] = { vol: 0, fees: 0, count: 0, oiHours: 0 };
+    daily[d].oiHours += p.oiHours;
+  });
+  const days = Object.keys(daily).sort();
+  const dailyPtVol    = days.map(d => daily[d].vol    * wVol);
+  const dailyPtOi     = days.map(d => daily[d].oiHours * wOi);
+  const dailyPtFee    = days.map(d => daily[d].fees   * wFee);
+  const dailyPtTrades = days.map(d => daily[d].count  * wTrades);
+
+  if (charts.pointsDaily) charts.pointsDaily.destroy();
+  charts.pointsDaily = new Chart(document.getElementById('chartPointsDaily'), {
+    type: 'bar',
+    data: { labels: days.map(d=>d.slice(5)), datasets: [
+      { label: 'Volume', data: dailyPtVol,    backgroundColor: 'rgba(108,92,231,0.7)', borderRadius: 3 },
+      { label: 'OI×Tempo', data: dailyPtOi,  backgroundColor: 'rgba(255,145,0,0.7)',  borderRadius: 3 },
+      { label: 'Fees',    data: dailyPtFee,   backgroundColor: 'rgba(0,230,118,0.7)',  borderRadius: 3 },
+      { label: 'Trades',  data: dailyPtTrades, backgroundColor: 'rgba(68,138,255,0.7)', borderRadius: 3 },
+    ]},
+    options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } }, scales: { x: { stacked: true, ticks: { color: '#8888aa' }, grid: { display: false } }, y: { stacked: true, ticks: { color: '#8888aa', callback: v => fmtNum(v) }, grid: { color: '#2a2a42' } } } }
+  });
+
+  // Breakdown donut
+  if (charts.pointsBreakdown) charts.pointsBreakdown.destroy();
+  charts.pointsBreakdown = new Chart(document.getElementById('chartPointsBreakdown'), {
+    type: 'doughnut',
+    data: { labels: ['Volume', 'OI×Tempo', 'Fees', 'Nº Trades'], datasets: [{ data: [ptVol, ptOi, ptFee, ptTrades], backgroundColor: ['rgba(108,92,231,0.8)','rgba(255,145,0,0.8)','rgba(0,230,118,0.8)','rgba(68,138,255,0.8)'], borderWidth: 0 }] },
+    options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } } }
+  });
+
+  // Cumulative points
+  let cum = 0;
+  const cumPts = days.map((d,i) => { cum += dailyPtVol[i] + dailyPtOi[i] + dailyPtFee[i] + dailyPtTrades[i]; return cum; });
+  if (charts.pointsCum) charts.pointsCum.destroy();
+  charts.pointsCum = new Chart(document.getElementById('chartPointsCum'), {
+    type: 'line',
+    data: { labels: days.map(d=>d.slice(5)), datasets: [{ label: 'Pontos Acumulados', data: cumPts, borderColor: '#ffd740', backgroundColor: 'rgba(255,215,64,0.08)', fill: true, tension: 0.3, pointRadius: 2 }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#8888aa', callback: v => fmtNum(v) }, grid: { color: '#2a2a42' } }, x: { ticks: { color: '#8888aa', maxTicksLimit: 15 }, grid: { display: false } } } }
+  });
+
+  // Positions table
+  const posSorted = [...positions].sort((a,b) => b.oiHours - a.oiHours).slice(0, 200);
+  const posCols = [
+    { key: 'coin' },
+    { key: 'side', render: r => '<span style="color:' + (r.side==='Long'?'var(--green)':'var(--red)') + '">' + r.side + '</span>' },
+    { key: 'openTs', render: r => r.openTs.toLocaleString() },
+    { key: 'closeTs', render: r => r.closeTs ? r.closeTs.toLocaleString() : '<span style="color:var(--yellow)">Open</span>' },
+    { key: 'durationHours', render: r => r.durationHours.toFixed(1) + 'h' },
+    { key: 'avgNotional', render: r => fmt(r.avgNotional) },
+    { key: 'oiHours', render: r => fmtNum(r.oiHours) },
+    { key: 'pts', render: r => '<span style="color:var(--yellow)">' + fmtNum(r.oiHours * wOi) + '</span>' },
+  ];
+  renderTable('positionsTableBody', posSorted, posCols);
+}
+
+// Slider listeners
+['wVol','wOi','wFee','wTrades'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => { if (allTrades.length) renderXyzPoints(); });
 });
 </script>
 </body>
