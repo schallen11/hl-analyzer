@@ -156,12 +156,12 @@ tbody tr.group-row td { border-top: 2px solid var(--accent); padding: 12px 14px;
       <div class="section-title">XYZ Markets (Perps) <span class="badge">Grouped</span></div>
       <div class="cards" id="xyzTotalCards"></div>
       <div class="table-wrap"><table><thead><tr>
-        <th>Market</th><th>Volume</th><th>Fees</th><th>PnL</th><th>Trades</th><th>Fee%</th>
+        <th>Market</th><th>Volume</th><th>Closed PnL</th><th>Entry Fees</th><th>Net PnL</th><th>Trades</th><th>Fee%</th>
       </tr></thead><tbody id="xyzTableBody"></tbody></table></div>
       <div class="section-title">Unit Markets (SOL, ETH, BTC, XPL spot) <span class="badge">Grouped</span></div>
       <div class="cards" id="unitTotalCards"></div>
       <div class="table-wrap"><table><thead><tr>
-        <th>Token</th><th>Volume</th><th>Fees</th><th>PnL</th><th>Trades</th><th>Fee%</th>
+        <th>Token</th><th>Volume</th><th>Closed PnL</th><th>Entry Fees</th><th>Net PnL</th><th>Trades</th><th>Fee%</th>
       </tr></thead><tbody id="unitTableBody"></tbody></table></div>
     </div>
 
@@ -418,44 +418,47 @@ function renderXyzUnit() {
   const unitStats = computeStats(unitTrades);
 
   function sumStats(stats) {
-    const t = { volume: 0, fees: 0, pnl: 0, trades: 0 };
-    Object.values(stats).forEach(s => { t.volume += s.volume; t.fees += s.fees; t.pnl += s.pnl; t.trades += s.trades; });
+    const t = { volume: 0, fees: 0, entryFees: 0, pnl: 0, netPnl: 0, trades: 0 };
+    Object.values(stats).forEach(s => { t.volume += s.volume; t.fees += s.fees; t.entryFees += s.entryFees; t.pnl += s.pnl; t.netPnl += s.netPnl; t.trades += s.trades; });
     return t;
   }
 
   const xyzT = sumStats(xyzStats);
   renderCards('xyzTotalCards', [
     { label: 'XYZ Total Volume', value: fmt(xyzT.volume) },
-    { label: 'XYZ Total Fees', value: fmt(xyzT.fees), cls: 'negative' },
-    { label: 'XYZ Net PnL', value: fmtPnl(xyzT.pnl), cls: pnlClass(xyzT.pnl) },
     { label: 'XYZ Trades', value: xyzT.trades.toLocaleString() },
+    { label: 'Closed PnL', value: fmtPnl(xyzT.pnl), cls: pnlClass(xyzT.pnl), sub: 'Inclui fee de saida' },
+    { label: 'Entry Fees', value: fmt(xyzT.entryFees), cls: 'negative' },
+    { label: 'Net PnL', value: fmtPnl(xyzT.netPnl), cls: pnlClass(xyzT.netPnl), sub: 'closedPnl - entry fees' },
     { label: 'Fee/Vol', value: xyzT.volume > 0 ? pctFmt((xyzT.fees/xyzT.volume)*100) : '0%' },
   ]);
 
   const cols = [
     { key: 'coin' },
     { key: 'volume', render: r => fmt(r.volume) },
-    { key: 'fees', render: r => '<span class="negative">' + fmt(r.fees) + '</span>' },
     { key: 'pnl', render: r => '<span class="' + pnlClass(r.pnl) + '">' + fmtPnl(r.pnl) + '</span>' },
+    { key: 'entryFees', render: r => '<span class="negative">' + fmt(r.entryFees) + '</span>' },
+    { key: 'netPnl', render: r => '<span class="' + pnlClass(r.netPnl) + '">' + fmtPnl(r.netPnl) + '</span>' },
     { key: 'trades', render: r => r.trades.toLocaleString() },
     { key: 'feePct', render: r => pctFmt(r.feePct || 0) },
   ];
 
   let xyzRows = Object.values(xyzStats).sort((a,b) => b.volume - a.volume);
-  xyzRows.push({ coin: 'TOTAL XYZ', volume: xyzT.volume, fees: xyzT.fees, pnl: xyzT.pnl, trades: xyzT.trades, feePct: xyzT.volume > 0 ? (xyzT.fees/xyzT.volume)*100 : 0, _group: true });
+  xyzRows.push({ coin: 'TOTAL XYZ', volume: xyzT.volume, pnl: xyzT.pnl, entryFees: xyzT.entryFees, netPnl: xyzT.netPnl, trades: xyzT.trades, feePct: xyzT.volume > 0 ? (xyzT.fees/xyzT.volume)*100 : 0, _group: true });
   renderTable('xyzTableBody', xyzRows, cols);
 
   const unitT = sumStats(unitStats);
   renderCards('unitTotalCards', [
     { label: 'Unit Total Volume', value: fmt(unitT.volume) },
-    { label: 'Unit Total Fees', value: fmt(unitT.fees), cls: 'negative' },
-    { label: 'Unit Net PnL', value: fmtPnl(unitT.pnl), cls: pnlClass(unitT.pnl) },
     { label: 'Unit Trades', value: unitT.trades.toLocaleString() },
+    { label: 'Closed PnL', value: fmtPnl(unitT.pnl), cls: pnlClass(unitT.pnl), sub: 'Inclui fee de saida' },
+    { label: 'Entry Fees', value: fmt(unitT.entryFees), cls: 'negative' },
+    { label: 'Net PnL', value: fmtPnl(unitT.netPnl), cls: pnlClass(unitT.netPnl), sub: 'closedPnl - entry fees' },
     { label: 'Fee/Vol', value: unitT.volume > 0 ? pctFmt((unitT.fees/unitT.volume)*100) : '0%' },
   ]);
 
   let unitRows = Object.values(unitStats).sort((a,b) => b.volume - a.volume);
-  unitRows.push({ coin: 'TOTAL UNIT', volume: unitT.volume, fees: unitT.fees, pnl: unitT.pnl, trades: unitT.trades, feePct: unitT.volume > 0 ? (unitT.fees/unitT.volume)*100 : 0, _group: true });
+  unitRows.push({ coin: 'TOTAL UNIT', volume: unitT.volume, pnl: unitT.pnl, entryFees: unitT.entryFees, netPnl: unitT.netPnl, trades: unitT.trades, feePct: unitT.volume > 0 ? (unitT.fees/unitT.volume)*100 : 0, _group: true });
   renderTable('unitTableBody', unitRows, cols);
 }
 
