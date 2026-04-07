@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -445,7 +446,7 @@ function renderOverview() {
   renderCards('overviewCards', [
     { label: 'Total Volume', value: fmt(totalVol) },
     { label: 'All Fees (entry+exit)', value: fmt(totalFees), cls: 'negative' },
-    { label: 'Closed PnL', value: fmtPnl(totalPnl) },
+    { label: 'Closed PnL', value: fmtPnl(totalPnl), cls: pnlClass(totalPnl), sub: 'Inclui fee de saida' },
     { label: 'Entry Fees', value: fmt(totalEntryFees), cls: 'negative', sub: 'Fees das aberturas' },
     { label: 'Net PnL', value: fmtPnl(totalPnl - totalEntryFees), cls: pnlClass(totalPnl - totalEntryFees), sub: 'closedPnl - entry fees' },
     { label: 'Avg Trade', value: fmt(totalVol / allTrades.length) },
@@ -535,7 +536,7 @@ function renderXyzUnit() {
   renderCards('xyzTotalCards', [
     { label: 'XYZ Total Volume', value: fmt(xyzT.volume) },
     { label: 'XYZ Trades', value: xyzT.trades.toLocaleString() },
-    { label: 'Closed PnL', value: fmtPnl(xyzT.pnl), cls: pnlClass(xyzT.pnl) },
+    { label: 'Closed PnL', value: fmtPnl(xyzT.pnl), cls: pnlClass(xyzT.pnl), sub: 'Inclui fee de saida' },
     { label: 'Entry Fees', value: fmt(xyzT.entryFees), cls: 'negative' },
     { label: 'Net PnL', value: fmtPnl(xyzT.netPnl), cls: pnlClass(xyzT.netPnl), sub: 'closedPnl - entry fees' },
     { label: 'Fee/Vol', value: xyzT.volume > 0 ? pctFmt((xyzT.fees/xyzT.volume)*100) : '0%' },
@@ -559,7 +560,7 @@ function renderXyzUnit() {
   renderCards('unitTotalCards', [
     { label: 'Unit Total Volume', value: fmt(unitT.volume) },
     { label: 'Unit Trades', value: unitT.trades.toLocaleString() },
-    { label: 'Closed PnL', value: fmtPnl(unitT.pnl), cls: pnlClass(unitT.pnl) },
+    { label: 'Closed PnL', value: fmtPnl(unitT.pnl), cls: pnlClass(unitT.pnl), sub: 'Inclui fee de saida' },
     { label: 'Entry Fees', value: fmt(unitT.entryFees), cls: 'negative' },
     { label: 'Net PnL', value: fmtPnl(unitT.netPnl), cls: pnlClass(unitT.netPnl), sub: 'closedPnl - entry fees' },
     { label: 'Fee/Vol', value: unitT.volume > 0 ? pctFmt((unitT.fees/unitT.volume)*100) : '0%' },
@@ -610,7 +611,7 @@ function isEntryTrade(dir) {
 function calcSpreadStats(trades) {
   const vol = trades.reduce((s,t) => s + t.ntl, 0);
   const allFees = trades.reduce((s,t) => s + t.fee, 0);
-  const closedPnl = trades.reduce((s,t) => s + t.pnl, 0);
+  const closedPnl = trades.reduce((s,t) => t.pnl, 0);
 
   // Fee de entrada real (das trades de abertura)
   const entryTrades = trades.filter(t => isEntryTrade(t.dir));
@@ -635,7 +636,7 @@ function renderSpreadPanel(cfg, hours) {
     return [
       { label: label + ' Volume', value: fmt(s.vol) },
       { label: 'Trades', value: s.count.toLocaleString(), sub: s.entryCount + ' entry / ' + s.exitCount + ' exit' },
-      { label: 'Closed PnL', value: fmtPnl(s.closedPnl), cls: pnlClass(s.closedPnl) },
+      { label: 'Closed PnL', value: fmtPnl(s.closedPnl), cls: pnlClass(s.closedPnl), sub: 'Inclui fee de saída' },
       { label: 'Entry Fees', value: fmt(s.entryFeesReal), cls: 'negative' },
       { label: 'Net PnL', value: fmtPnl(s.netPnl), cls: pnlClass(s.netPnl), sub: 'closedPnl − entry fees' },
       { label: 'Fee/Vol', value: s.vol > 0 ? pctFmt((s.allFees/s.vol)*100) : '0%' },
