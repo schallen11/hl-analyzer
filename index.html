@@ -101,11 +101,28 @@ tbody tr.group-row td { border-top: 2px solid var(--accent); padding: 12px 14px;
     <p>Hyperliquid trade history analytics &middot; Spreads, PnL, Volume</p>
   </header>
 
-  <div class="upload-section" id="uploadArea">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-    <span class="upload-text">Upload your Hyperliquid trade history CSV</span>
-    <span class="upload-hint">Drag &amp; drop or click to select</span>
-    <input type="file" id="csvFile" accept=".csv" style="display:none">
+  <div id="uploadArea">
+    <!-- Wallet input -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:32px 40px;margin-bottom:16px;">
+      <div style="font-size:1.05em;font-weight:600;margin-bottom:6px;">Buscar por carteira</div>
+      <div style="color:var(--text2);font-size:0.85em;margin-bottom:16px;">Cole seu endereço EVM — os trades são buscados direto da API pública da Hyperliquid.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <input type="text" id="walletInput" placeholder="0x..." style="flex:1;min-width:280px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:12px 16px;border-radius:10px;font-size:0.95em;outline:none;font-family:monospace;">
+        <button id="fetchBtn" style="background:var(--accent);color:#fff;border:none;padding:12px 28px;border-radius:10px;font-size:0.95em;font-weight:600;cursor:pointer;">Buscar Trades</button>
+      </div>
+      <div id="fetchStatus" style="margin-top:12px;font-size:0.85em;color:var(--text2);min-height:20px;"></div>
+    </div>
+    <!-- CSV fallback -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <span style="color:var(--text2);font-size:0.82em;">ou use o CSV exportado do HL</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>
+    <div id="csvDropArea" style="border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:all 0.2s;">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <div style="margin-top:8px;color:var(--text2);font-size:0.88em;">Clique ou arraste o CSV aqui</div>
+      <input type="file" id="csvFile" accept=".csv" style="display:none">
+    </div>
   </div>
 
   <div id="dashboard" style="display:none">
@@ -168,32 +185,63 @@ tbody tr.group-row td { border-top: 2px solid var(--accent); padding: 12px 14px;
 
     <!-- SPREADS -->
     <div class="tab-content" id="tab-spreads">
-      <div class="section-title">Spread Strategy Analysis &mdash; XYZ100 &amp; S&P500</div>
-      <p style="color:var(--text2);font-size:0.88em;margin-bottom:16px;">PnL no CSV do Hyperliquid <strong style="color:var(--yellow)">NÃO inclui fees</strong>. O "Net PnL" abaixo = closedPnl - fees (lucro real).</p>
-      <div class="pill-group" id="spreadTimeFilter" style="margin-bottom:16px;">
+      <p style="color:var(--text2);font-size:0.85em;margin-bottom:14px;">Net PnL = closedPnl − entry fees. <span style="color:var(--yellow)">closedPnl já inclui fee de saída.</span></p>
+
+      <!-- Spread sub-tabs -->
+      <div style="display:flex;gap:6px;margin-bottom:16px;">
+        <button class="spread-sub-btn active" data-spread="xyz" style="padding:9px 22px;border:1px solid var(--accent);border-radius:10px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-size:0.88em;">XYZ100 &amp; S&amp;P500</button>
+        <button class="spread-sub-btn" data-spread="oil" style="padding:9px 22px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text2);font-weight:600;cursor:pointer;font-size:0.88em;">Brent &amp; CL (WTI)</button>
+      </div>
+
+      <!-- Shared timeframe filter -->
+      <div class="pill-group" id="spreadTimeFilter" style="margin-bottom:20px;">
         <button class="pill active" data-hours="0">All Time</button>
         <button class="pill" data-hours="1">1h</button>
         <button class="pill" data-hours="6">6h</button>
         <button class="pill" data-hours="24">24h</button>
+        <button class="pill" data-hours="48">2d</button>
         <button class="pill" data-hours="72">3d</button>
         <button class="pill" data-hours="168">7d</button>
         <button class="pill" data-hours="720">30d</button>
       </div>
-      <div class="section-title">Combined (XYZ100 + S&P500)</div>
-      <div class="cards" id="spreadCombinedCards"></div>
-      <div class="section-title">XYZ100</div>
-      <div class="cards" id="spreadXyz100Cards"></div>
-      <div class="section-title">S&P500</div>
-      <div class="cards" id="spreadSp500Cards"></div>
-      <div class="chart-row">
-        <div class="chart-container"><h3>Daily Net PnL (closedPnl - fees)</h3><canvas id="chartSpreadDailyPnl"></canvas></div>
-        <div class="chart-container"><h3>Cumulative Net PnL</h3><canvas id="chartSpreadCumPnl"></canvas></div>
+
+      <!-- XYZ100 / S&P500 panel -->
+      <div id="spread-panel-xyz" class="spread-panel">
+        <div class="section-title">Combined (XYZ100 + S&P500)</div>
+        <div class="cards" id="sp-xyz-combinedCards"></div>
+        <div class="section-title">XYZ100</div>
+        <div class="cards" id="sp-xyz-aCards"></div>
+        <div class="section-title">S&amp;P500</div>
+        <div class="cards" id="sp-xyz-bCards"></div>
+        <div class="chart-row">
+          <div class="chart-container"><h3>Daily Net PnL</h3><canvas id="sp-xyz-chartDaily"></canvas></div>
+          <div class="chart-container"><h3>Cumulative Net PnL</h3><canvas id="sp-xyz-chartCum"></canvas></div>
+        </div>
+        <div class="chart-container"><h3>Daily Volume: XYZ100 vs S&P500</h3><canvas id="sp-xyz-chartVol"></canvas></div>
+        <div class="section-title">Recent Trades</div>
+        <div class="table-wrap"><div class="table-scroll" style="max-height:380px"><table><thead><tr>
+          <th>Time</th><th>Market</th><th>Direction</th><th>Price</th><th>Notional</th><th>Fee</th><th>Closed PnL</th><th>Net PnL</th>
+        </tr></thead><tbody id="sp-xyz-trades"></tbody></table></div></div>
       </div>
-      <div class="chart-container"><h3>Daily Volume: XYZ100 vs S&P500</h3><canvas id="chartSpreadVolComp"></canvas></div>
-      <div class="section-title">Recent Trades</div>
-      <div class="table-wrap"><div class="table-scroll" style="max-height:400px"><table><thead><tr>
-        <th>Time</th><th>Market</th><th>Direction</th><th>Price</th><th>Size</th><th>Notional</th><th>Fee</th><th>Closed PnL</th><th>Net PnL</th>
-      </tr></thead><tbody id="spreadTradesBody"></tbody></table></div></div>
+
+      <!-- Brent / CL panel -->
+      <div id="spread-panel-oil" class="spread-panel" style="display:none">
+        <div class="section-title">Combined (Brent + CL/WTI)</div>
+        <div class="cards" id="sp-oil-combinedCards"></div>
+        <div class="section-title">Brent</div>
+        <div class="cards" id="sp-oil-aCards"></div>
+        <div class="section-title">CL / WTI</div>
+        <div class="cards" id="sp-oil-bCards"></div>
+        <div class="chart-row">
+          <div class="chart-container"><h3>Daily Net PnL</h3><canvas id="sp-oil-chartDaily"></canvas></div>
+          <div class="chart-container"><h3>Cumulative Net PnL</h3><canvas id="sp-oil-chartCum"></canvas></div>
+        </div>
+        <div class="chart-container"><h3>Daily Volume: Brent vs CL/WTI</h3><canvas id="sp-oil-chartVol"></canvas></div>
+        <div class="section-title">Recent Trades</div>
+        <div class="table-wrap"><div class="table-scroll" style="max-height:380px"><table><thead><tr>
+          <th>Time</th><th>Market</th><th>Direction</th><th>Price</th><th>Notional</th><th>Fee</th><th>Closed PnL</th><th>Net PnL</th>
+        </tr></thead><tbody id="sp-oil-trades"></tbody></table></div></div>
+      </div>
     </div>
 
     <!-- VOLUME 24h -->
@@ -522,12 +570,25 @@ function renderXyzUnit() {
   renderTable('unitTableBody', unitRows, cols);
 }
 
-// ===== SPREADS (XYZ100 & S&P500) =====
-const SPREAD_COINS = ['XYZ100 (xyz)', 'S&P500 (xyz)'];
-let spreadTimeHours = 0; // 0 = all time
+// ===== SPREADS (generic) =====
+let spreadTimeHours = 0;
+let activeSpread = 'xyz';
 
-function getSpreadTrades(hours) {
-  let trades = allTrades.filter(t => SPREAD_COINS.includes(t.coin));
+const SPREAD_CONFIGS = {
+  xyz: {
+    coinA: 'XYZ100 (xyz)', labelA: 'XYZ100', colorA: '#ff9100',
+    coinB: 'S&P500 (xyz)', labelB: 'S&P500', colorB: '#6c5ce7',
+    idPrefix: 'sp-xyz',
+  },
+  oil: {
+    coinA: 'BRENTOIL (xyz)', labelA: 'Brent',  colorA: '#00e676',
+    coinB: 'WTIOIL (xyz)',   labelB: 'CL/WTI', colorB: '#448aff',
+    idPrefix: 'sp-oil',
+  },
+};
+
+function getSpreadTrades(coinList, hours) {
+  let trades = allTrades.filter(t => coinList.includes(t.coin));
   if (hours > 0) {
     const now = allTrades.length ? allTrades[allTrades.length - 1].ts : new Date();
     const cutoff = new Date(now.getTime() - hours * 3600000);
@@ -560,91 +621,102 @@ function calcSpreadStats(trades) {
   return { vol, allFees, entryFeesReal, closedPnl, netPnl, count: trades.length, entryCount: entryTrades.length, exitCount: trades.length - entryTrades.length };
 }
 
-function renderSpreads() {
-  const trades = getSpreadTrades(spreadTimeHours);
-  const xyz100 = trades.filter(t => t.coin === 'XYZ100 (xyz)');
-  const sp500 = trades.filter(t => t.coin === 'S&P500 (xyz)');
+function renderSpreadPanel(cfg, hours) {
+  const id = cfg.idPrefix;
+  const tradesA = getSpreadTrades([cfg.coinA], hours);
+  const tradesB = getSpreadTrades([cfg.coinB], hours);
+  const trades  = [...tradesA, ...tradesB].sort((a,b) => a.ts - b.ts);
 
-  const xyz100S = calcSpreadStats(xyz100);
-  const sp500S = calcSpreadStats(sp500);
+  const sA       = calcSpreadStats(tradesA);
+  const sB       = calcSpreadStats(tradesB);
   const combined = calcSpreadStats(trades);
 
-  function makeCards(s, prefix) {
+  function makeCards(s, label) {
     return [
-      { label: prefix + ' Volume', value: fmt(s.vol) },
+      { label: label + ' Volume', value: fmt(s.vol) },
       { label: 'Trades', value: s.count.toLocaleString(), sub: s.entryCount + ' entry / ' + s.exitCount + ' exit' },
-      { label: 'Closed PnL', value: fmtPnl(s.closedPnl), cls: pnlClass(s.closedPnl), sub: 'Inclui fee de saida' },
-      { label: 'Entry Fees', value: fmt(s.entryFeesReal), cls: 'negative', sub: 'Fees das aberturas' },
-      { label: 'Net PnL', value: fmtPnl(s.netPnl), cls: pnlClass(s.netPnl), sub: 'closedPnl - entry fees' },
+      { label: 'Closed PnL', value: fmtPnl(s.closedPnl), cls: pnlClass(s.closedPnl), sub: 'Inclui fee de saída' },
+      { label: 'Entry Fees', value: fmt(s.entryFeesReal), cls: 'negative' },
+      { label: 'Net PnL', value: fmtPnl(s.netPnl), cls: pnlClass(s.netPnl), sub: 'closedPnl − entry fees' },
       { label: 'Fee/Vol', value: s.vol > 0 ? pctFmt((s.allFees/s.vol)*100) : '0%' },
     ];
   }
 
-  renderCards('spreadCombinedCards', makeCards(combined, 'Total'));
-  renderCards('spreadXyz100Cards', makeCards(xyz100S, 'XYZ100'));
-  renderCards('spreadSp500Cards', makeCards(sp500S, 'S&P500'));
+  renderCards(id + '-combinedCards', makeCards(combined, 'Total'));
+  renderCards(id + '-aCards', makeCards(sA, cfg.labelA));
+  renderCards(id + '-bCards', makeCards(sB, cfg.labelB));
 
-  // Daily Net PnL chart (closedPnl - entry fees only, exit fee already in closedPnl)
-  const dailyXyz = {}, dailySp = {};
-  xyz100.forEach(t => { const d = t.ts.toISOString().slice(0,10); const entryFee = isEntryTrade(t.dir) ? t.fee : 0; dailyXyz[d] = (dailyXyz[d]||0) + (t.pnl - entryFee); });
-  sp500.forEach(t => { const d = t.ts.toISOString().slice(0,10); const entryFee = isEntryTrade(t.dir) ? t.fee : 0; dailySp[d] = (dailySp[d]||0) + (t.pnl - entryFee); });
-  const allDays = [...new Set([...Object.keys(dailyXyz), ...Object.keys(dailySp)])].sort();
+  // Build daily buckets
+  function dailyNet(ts) {
+    const d = ts.toISOString().slice(0,10);
+    if (hours > 0 && hours <= 72) return ts.toISOString().slice(0,13) + ':00'; // hourly for short windows
+    return d;
+  }
+  const bucA = {}, bucB = {};
+  tradesA.forEach(t => { const k=dailyNet(t.ts); const ef=isEntryTrade(t.dir)?t.fee:0; bucA[k]=(bucA[k]||0)+(t.pnl-ef); });
+  tradesB.forEach(t => { const k=dailyNet(t.ts); const ef=isEntryTrade(t.dir)?t.fee:0; bucB[k]=(bucB[k]||0)+(t.pnl-ef); });
+  const bucVolA = {}, bucVolB = {};
+  tradesA.forEach(t => { const k=dailyNet(t.ts); bucVolA[k]=(bucVolA[k]||0)+t.ntl; });
+  tradesB.forEach(t => { const k=dailyNet(t.ts); bucVolB[k]=(bucVolB[k]||0)+t.ntl; });
 
-  if (charts.spreadDailyPnl) charts.spreadDailyPnl.destroy();
-  charts.spreadDailyPnl = new Chart(document.getElementById('chartSpreadDailyPnl'), {
+  const allKeys = [...new Set([...Object.keys(bucA),...Object.keys(bucB)])].sort();
+  const shortLabel = k => hours > 0 && hours <= 72 ? k.slice(5,16) : k.slice(5);
+
+  // Daily Net PnL
+  const ckDaily = id + '-chartDaily';
+  if (charts[ckDaily]) charts[ckDaily].destroy();
+  charts[ckDaily] = new Chart(document.getElementById(ckDaily), {
     type: 'bar',
-    data: { labels: allDays.map(d => d.slice(5)), datasets: [
-      { label: 'XYZ100', data: allDays.map(d => dailyXyz[d]||0), backgroundColor: 'rgba(255,145,0,0.7)', borderRadius: 4 },
-      { label: 'S&P500', data: allDays.map(d => dailySp[d]||0), backgroundColor: 'rgba(108,92,231,0.7)', borderRadius: 4 },
+    data: { labels: allKeys.map(shortLabel), datasets: [
+      { label: cfg.labelA, data: allKeys.map(k=>bucA[k]||0), backgroundColor: cfg.colorA + 'b3', borderRadius: 4 },
+      { label: cfg.labelB, data: allKeys.map(k=>bucB[k]||0), backgroundColor: cfg.colorB + 'b3', borderRadius: 4 },
     ]},
-    options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } }, scales: { y: { ticks: { color: '#8888aa', callback: v => fmt(v) }, grid: { color: '#2a2a42' } }, x: { ticks: { color: '#8888aa' }, grid: { display: false } } } }
+    options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } }, scales: { y: { ticks: { color: '#8888aa', callback: v=>fmt(v) }, grid: { color: '#2a2a42' } }, x: { ticks: { color: '#8888aa', maxTicksLimit: 20 }, grid: { display: false } } } }
   });
 
-  // Cumulative Net PnL chart
-  let cumXyz = 0, cumSp = 0, cumTotal = 0;
-  const cumPoints = allDays.map(d => {
-    cumXyz += (dailyXyz[d]||0); cumSp += (dailySp[d]||0); cumTotal = cumXyz + cumSp;
-    return { d, cumXyz, cumSp, cumTotal };
-  });
-  if (charts.spreadCumPnl) charts.spreadCumPnl.destroy();
-  charts.spreadCumPnl = new Chart(document.getElementById('chartSpreadCumPnl'), {
+  // Cumulative PnL
+  let cumA=0, cumB=0;
+  const cumPts = allKeys.map(k => { cumA+=(bucA[k]||0); cumB+=(bucB[k]||0); return { k, cumA, cumB, tot: cumA+cumB }; });
+  const ckCum = id + '-chartCum';
+  if (charts[ckCum]) charts[ckCum].destroy();
+  charts[ckCum] = new Chart(document.getElementById(ckCum), {
     type: 'line',
-    data: { labels: cumPoints.map(p => p.d.slice(5)), datasets: [
-      { label: 'Combined', data: cumPoints.map(p => p.cumTotal), borderColor: '#ffd740', backgroundColor: 'rgba(255,215,64,0.08)', fill: true, tension: 0.3, pointRadius: 2 },
-      { label: 'XYZ100', data: cumPoints.map(p => p.cumXyz), borderColor: '#ff9100', tension: 0.3, pointRadius: 1, borderWidth: 1.5 },
-      { label: 'S&P500', data: cumPoints.map(p => p.cumSp), borderColor: '#6c5ce7', tension: 0.3, pointRadius: 1, borderWidth: 1.5 },
+    data: { labels: cumPts.map(p=>shortLabel(p.k)), datasets: [
+      { label: 'Combined', data: cumPts.map(p=>p.tot), borderColor: '#ffd740', backgroundColor: 'rgba(255,215,64,0.08)', fill: true, tension: 0.3, pointRadius: 2 },
+      { label: cfg.labelA,  data: cumPts.map(p=>p.cumA), borderColor: cfg.colorA, tension: 0.3, pointRadius: 1, borderWidth: 1.5 },
+      { label: cfg.labelB,  data: cumPts.map(p=>p.cumB), borderColor: cfg.colorB, tension: 0.3, pointRadius: 1, borderWidth: 1.5 },
     ]},
-    options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } }, scales: { y: { ticks: { color: '#8888aa', callback: v => fmt(v) }, grid: { color: '#2a2a42' } }, x: { ticks: { color: '#8888aa', maxTicksLimit: 12 }, grid: { display: false } } } }
+    options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } }, scales: { y: { ticks: { color: '#8888aa', callback: v=>fmt(v) }, grid: { color: '#2a2a42' } }, x: { ticks: { color: '#8888aa', maxTicksLimit: 15 }, grid: { display: false } } } }
   });
 
-  // Volume comparison chart
-  const dailyVolXyz = {}, dailyVolSp = {};
-  xyz100.forEach(t => { const d = t.ts.toISOString().slice(0,10); dailyVolXyz[d] = (dailyVolXyz[d]||0) + t.ntl; });
-  sp500.forEach(t => { const d = t.ts.toISOString().slice(0,10); dailyVolSp[d] = (dailyVolSp[d]||0) + t.ntl; });
-  if (charts.spreadVolComp) charts.spreadVolComp.destroy();
-  charts.spreadVolComp = new Chart(document.getElementById('chartSpreadVolComp'), {
+  // Volume comparison
+  const ckVol = id + '-chartVol';
+  if (charts[ckVol]) charts[ckVol].destroy();
+  charts[ckVol] = new Chart(document.getElementById(ckVol), {
     type: 'bar',
-    data: { labels: allDays.map(d => d.slice(5)), datasets: [
-      { label: 'XYZ100', data: allDays.map(d => dailyVolXyz[d]||0), backgroundColor: 'rgba(255,145,0,0.6)', borderRadius: 4 },
-      { label: 'S&P500', data: allDays.map(d => dailyVolSp[d]||0), backgroundColor: 'rgba(108,92,231,0.6)', borderRadius: 4 },
+    data: { labels: allKeys.map(shortLabel), datasets: [
+      { label: cfg.labelA, data: allKeys.map(k=>bucVolA[k]||0), backgroundColor: cfg.colorA + '99', borderRadius: 4 },
+      { label: cfg.labelB, data: allKeys.map(k=>bucVolB[k]||0), backgroundColor: cfg.colorB + '99', borderRadius: 4 },
     ]},
-    options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } }, scales: { y: { stacked: true, ticks: { color: '#8888aa', callback: v => fmt(v) }, grid: { color: '#2a2a42' } }, x: { stacked: true, ticks: { color: '#8888aa' }, grid: { display: false } } } }
+    options: { responsive: true, plugins: { legend: { labels: { color: '#aaa' } } }, scales: { y: { stacked: true, ticks: { color: '#8888aa', callback: v=>fmt(v) }, grid: { color: '#2a2a42' } }, x: { stacked: true, ticks: { color: '#8888aa', maxTicksLimit: 20 }, grid: { display: false } } } }
   });
 
   // Recent trades table
-  const recent = [...trades].reverse().slice(0, 200);
   const cols = [
-    { key: 'ts', render: r => r.ts.toLocaleString() },
-    { key: 'coin', render: r => '<span style="color:' + (r.coin.includes('XYZ100') ? 'var(--orange)' : 'var(--accent2)') + '">' + r.coin + '</span>' },
-    { key: 'dir', render: r => { const c = r.dir.includes('Long') ? 'var(--green)' : 'var(--red)'; return '<span style="color:' + c + '">' + r.dir + '</span>'; }},
-    { key: 'px', render: r => r.px.toFixed(2) },
-    { key: 'sz', render: r => r.sz.toLocaleString() },
-    { key: 'ntl', render: r => fmt(r.ntl) },
-    { key: 'fee', render: r => '<span class="negative">' + fmt(r.fee) + '</span>' },
-    { key: 'pnl', render: r => '<span class="' + pnlClass(r.pnl) + '">' + fmtPnl(r.pnl) + '</span>' },
-    { key: 'net', render: r => { const ef = isEntryTrade(r.dir) ? r.fee : 0; const n = r.pnl - ef; return '<span class="' + pnlClass(n) + '">' + fmtPnl(n) + '</span>' + (isEntryTrade(r.dir) ? ' <span style="color:var(--yellow);font-size:0.7em">ENTRY</span>' : ''); }},
+    { key: 'ts',  render: r => r.ts.toLocaleString() },
+    { key: 'coin', render: r => '<span style="color:' + (r.coin === cfg.coinA ? cfg.colorA : cfg.colorB) + '">' + r.coin + '</span>' },
+    { key: 'dir',  render: r => { const c = r.dir.includes('Long') ? 'var(--green)' : 'var(--red)'; return '<span style="color:'+c+'">'+r.dir+'</span>'; }},
+    { key: 'px',   render: r => r.px.toFixed(2) },
+    { key: 'ntl',  render: r => fmt(r.ntl) },
+    { key: 'fee',  render: r => '<span class="negative">'+fmt(r.fee)+'</span>' },
+    { key: 'pnl',  render: r => '<span class="'+pnlClass(r.pnl)+'">'+fmtPnl(r.pnl)+'</span>' },
+    { key: 'net',  render: r => { const ef=isEntryTrade(r.dir)?r.fee:0; const n=r.pnl-ef; return '<span class="'+pnlClass(n)+'">'+fmtPnl(n)+'</span>'+(isEntryTrade(r.dir)?' <span style="color:var(--yellow);font-size:0.7em">ENTRY</span>':''); }},
   ];
-  renderTable('spreadTradesBody', recent, cols);
+  renderTable(id + '-trades', [...trades].reverse().slice(0,200), cols);
+}
+
+function renderSpreads() {
+  renderSpreadPanel(SPREAD_CONFIGS[activeSpread], spreadTimeHours);
 }
 
 // ===== VOLUME TABS =====
@@ -715,34 +787,156 @@ function renderTradeLog() {
 }
 
 // ===== INIT =====
-document.getElementById('uploadArea').addEventListener('click', () => document.getElementById('csvFile').click());
-document.getElementById('uploadArea').addEventListener('dragover', e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--accent)'; });
-document.getElementById('uploadArea').addEventListener('dragleave', e => { e.currentTarget.style.borderColor = ''; });
-document.getElementById('uploadArea').addEventListener('drop', e => { e.preventDefault(); e.currentTarget.style.borderColor = ''; if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
-document.getElementById('csvFile').addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
 
-function loadFile(file) {
+// ---- CSV ----
+document.getElementById('csvDropArea').addEventListener('click', () => document.getElementById('csvFile').click());
+document.getElementById('csvDropArea').addEventListener('dragover', e => { e.preventDefault(); e.currentTarget.style.borderColor = 'var(--accent)'; });
+document.getElementById('csvDropArea').addEventListener('dragleave', e => { e.currentTarget.style.borderColor = ''; });
+document.getElementById('csvDropArea').addEventListener('drop', e => {
+  e.preventDefault(); e.currentTarget.style.borderColor = '';
+  if (e.dataTransfer.files[0]) loadCSVFile(e.dataTransfer.files[0]);
+});
+document.getElementById('csvFile').addEventListener('change', e => { if (e.target.files[0]) loadCSVFile(e.target.files[0]); });
+
+function loadCSVFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
     allTrades = parseCSV(e.target.result);
-    if (!allTrades.length) { alert('No trades found'); return; }
-    document.getElementById('uploadArea').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
-    renderOverview();
-    renderXyzUnit();
-    renderSpreads();
-    renderVolTab(filterByTime(allTrades, 24), 'vol24hCards', 'chart24h', 'vol24hTableBody', true);
-    renderVolTab(filterByTime(allTrades, 168), 'vol7dCards', 'chart7d', 'vol7dTableBody', false);
-    // Populate filters
-    const coins = [...new Set(allTrades.map(t => t.coin))].sort();
-    const dirs = [...new Set(allTrades.map(t => t.dir))].sort();
-    const cs = document.getElementById('tradeCoinFilter'), ds = document.getElementById('tradeDirFilter');
-    coins.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; cs.appendChild(o); });
-    dirs.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; ds.appendChild(o); });
-    renderTradeLog();
-    renderXyzPoints();
+    if (!allTrades.length) { alert('No trades found in CSV'); return; }
+    initDashboard();
   };
   reader.readAsText(file);
+}
+
+// ---- API (Wallet) ----
+// XYZ-listed perp markets on HL (appear without suffix in API, need "(xyz)" appended)
+const XYZ_PERPS = new Set(['S&P500','WTIOIL','XYZ100','NIKKEI','GOLD','SILVER','EUR','GBP','OIL','BRENTOIL','BRENT','BRTOIL','UKOIL']);
+
+function normalizeCoin(rawCoin, dir) {
+  // Already normalized (from CSV path)
+  if (rawCoin.includes('/') || rawCoin.includes('(xyz)')) return rawCoin;
+  // Spot fills have dir "Buy" or "Sell"
+  const isSpot = (dir === 'Buy' || dir === 'Sell');
+  if (isSpot) return rawCoin + '/USDC';
+  // XYZ perp markets
+  if (XYZ_PERPS.has(rawCoin)) return rawCoin + ' (xyz)';
+  // Standard HL perp
+  return rawCoin;
+}
+
+function setStatus(msg, color) {
+  const el = document.getElementById('fetchStatus');
+  el.textContent = msg;
+  el.style.color = color || 'var(--text2)';
+}
+
+async function fetchFromAPI(address) {
+  const HL_API   = 'https://api.hyperliquid.xyz/info';
+  const HEADERS  = { 'Content-Type': 'application/json' };
+  // Pagination: HL returns max 2000 fills per call via userFillsByTime.
+  // We walk forward in time from 2023-01-01 until we get fewer than 2000 fills.
+  const BATCH    = 2000;
+  const START_MS = new Date('2023-01-01').getTime();
+  let allFills   = [];
+  let cursor     = START_MS;
+  let page       = 0;
+
+  setStatus('⏳ Buscando histórico completo... (página 1)', 'var(--accent2)');
+
+  try {
+    while (true) {
+      page++;
+      const res = await fetch(HL_API, {
+        method: 'POST', headers: HEADERS,
+        body: JSON.stringify({ type: 'userFillsByTime', user: address, startTime: cursor })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const batch = await res.json();
+      if (!Array.isArray(batch)) throw new Error('Resposta inesperada da API');
+      if (!batch.length) break;
+
+      allFills = allFills.concat(batch);
+      setStatus(`⏳ ${allFills.length} fills carregados (página ${page})...`, 'var(--accent2)');
+
+      // If batch is smaller than max, we got everything
+      if (batch.length < BATCH) break;
+      // Advance cursor past the last fill's timestamp to avoid duplicates
+      cursor = batch[batch.length - 1].time + 1;
+    }
+  } catch (err) {
+    setStatus('❌ Erro: ' + err.message, 'var(--red)');
+    return;
+  }
+
+  if (!allFills.length) {
+    setStatus('⚠️ Nenhum trade encontrado para esse endereço.', 'var(--yellow)');
+    return;
+  }
+
+  allTrades = parseAPIFills(allFills);
+  if (!allTrades.length) { setStatus('❌ Falha ao parsear os trades.', 'var(--red)'); return; }
+  setStatus(`✅ ${allTrades.length} trades carregados (${page} páginas).`, 'var(--green)');
+  initDashboard();
+}
+
+function parseAPIFills(fills) {
+  // Deduplicate by tid (trade id) — pagination overlap can create dupes
+  const seen = new Set();
+  const unique = fills.filter(f => {
+    const key = f.tid ?? (f.hash + f.coin);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const trades = unique.map(f => {
+    const ts  = new Date(f.time);
+    const px  = parseFloat(f.px)  || 0;
+    const sz  = parseFloat(f.sz)  || 0;
+    const fee = parseFloat(f.fee) || 0;
+    const pnl = parseFloat(f.closedPnl) || 0;
+    const ntl = Math.abs(px * sz);
+    const dir = f.dir || (f.side === 'B' ? 'Buy' : 'Sell');
+    const coin = normalizeCoin(f.coin || '', dir);
+    return { ts, coin, dir, px, sz, ntl, fee, pnl };
+  });
+
+  trades.sort((a, b) => a.ts - b.ts);
+  return trades;
+}
+
+document.getElementById('fetchBtn').addEventListener('click', () => {
+  const addr = document.getElementById('walletInput').value.trim();
+  if (!addr.match(/^0x[0-9a-fA-F]{40}$/)) {
+    setStatus('❌ Endereço inválido. Use o formato 0x... (42 caracteres)', 'var(--red)');
+    return;
+  }
+  fetchFromAPI(addr);
+});
+
+document.getElementById('walletInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('fetchBtn').click();
+});
+
+// ---- Common init ----
+function initDashboard() {
+  document.getElementById('uploadArea').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  renderOverview();
+  renderXyzUnit();
+  renderSpreads();
+  renderVolTab(filterByTime(allTrades, 24), 'vol24hCards', 'chart24h', 'vol24hTableBody', true);
+  renderVolTab(filterByTime(allTrades, 168), 'vol7dCards', 'chart7d', 'vol7dTableBody', false);
+  // Populate filters
+  const coins = [...new Set(allTrades.map(t => t.coin))].sort();
+  const dirs  = [...new Set(allTrades.map(t => t.dir))].sort();
+  const cs = document.getElementById('tradeCoinFilter'), ds = document.getElementById('tradeDirFilter');
+  cs.innerHTML = '<option value="all">All Coins</option>';
+  ds.innerHTML = '<option value="all">All Directions</option>';
+  coins.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; cs.appendChild(o); });
+  dirs.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; ds.appendChild(o); });
+  renderTradeLog();
+  renderXyzPoints();
 }
 
 // Tab switching
@@ -783,6 +977,24 @@ document.getElementById('spreadTimeFilter').addEventListener('click', e => {
   e.target.classList.add('active');
   spreadTimeHours = parseInt(e.target.dataset.hours);
   renderSpreads();
+});
+
+// Spread sub-tab switcher
+document.querySelectorAll('.spread-sub-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.spread-sub-btn').forEach(b => {
+      b.style.background = 'transparent';
+      b.style.color = 'var(--text2)';
+      b.style.borderColor = 'var(--border)';
+    });
+    btn.style.background = 'var(--accent)';
+    btn.style.color = '#fff';
+    btn.style.borderColor = 'var(--accent)';
+    activeSpread = btn.dataset.spread;
+    document.querySelectorAll('.spread-panel').forEach(p => p.style.display = 'none');
+    document.getElementById('spread-panel-' + activeSpread).style.display = 'block';
+    renderSpreads();
+  });
 });
 
 // ===== XYZ POINTS =====
