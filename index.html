@@ -448,7 +448,7 @@ function renderOverview() {
     { label: 'All Fees (entry+exit)', value: fmt(totalFees), cls: 'negative' },
     { label: 'Closed PnL', value: fmtPnl(totalPnl), cls: pnlClass(totalPnl), sub: 'Inclui fee de saida' },
     { label: 'Entry Fees', value: fmt(totalEntryFees), cls: 'negative', sub: 'Fees das aberturas' },
-    { label: 'Net PnL', value: fmtPnl(totalPnl - totalEntryFees), cls: pnlClass(totalPnl - totalEntryFees), sub: 'closedPnl - entry fees' },
+    { label: 'Net PnL', value: fmtPnl(totalPnl), cls: pnlClass(totalPnl), sub: 'closedPnl - entry fees' },
     { label: 'Avg Trade', value: fmt(totalVol / allTrades.length) },
   ]);
 
