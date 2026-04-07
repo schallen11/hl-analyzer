@@ -611,7 +611,7 @@ function isEntryTrade(dir) {
 function calcSpreadStats(trades) {
   const vol = trades.reduce((s,t) => s + t.ntl, 0);
   const allFees = trades.reduce((s,t) => s + t.fee, 0);
-  const closedPnl = trades.reduce((s,t) => t.pnl, 0);
+  const closedPnl = trades.reduce((s,t) => s + t.pnl, 0);
 
   // Fee de entrada real (das trades de abertura)
   const entryTrades = trades.filter(t => isEntryTrade(t.dir));
