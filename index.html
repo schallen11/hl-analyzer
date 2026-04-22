@@ -638,7 +638,7 @@ function calcSpreadStats(trades) {
   const closedPnl = trades.reduce((s,t) => s + t.pnl, 0);
   const entryTrades = trades.filter(t => isEntryTrade(t.dir));
   const entryFeesReal = entryTrades.reduce((s,t) => s + t.fee, 0);
-  const netPnl = closedPnl;
+  const netPnl = closedPnl - entryFeesReal;
   return { vol, allFees, entryFeesReal, closedPnl, netPnl, count: trades.length, entryCount: entryTrades.length, exitCount: trades.length - entryTrades.length };
 }
 function renderSpreadPanel(cfg, hours) {
