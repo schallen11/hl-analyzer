@@ -198,7 +198,7 @@ tbody tr.group-row td { border-top: 2px solid var(--accent); padding: 12px 14px;
     </div>
     <!-- SPREADS -->
     <div class="tab-content" id="tab-spreads">
-      <p style="color:var(--text2);font-size:0.85em;margin-bottom:14px;">Net PnL = closedPnl − entry fees. <span style="color:var(--yellow)">closedPnl já inclui fee de saída.</span></p>
+      <p style="color:var(--text2);font-size:0.85em;margin-bottom:14px;">Net PnL = closedPnl − entry fees. <span style="color:var(--yellow)">closedPnl já inclui fee de saída (igual ao HL UI).</span></p>
       <div style="display:flex;gap:6px;margin-bottom:16px;">
         <button class="spread-sub-btn active" data-spread="xyz" style="padding:9px 22px;border:1px solid var(--accent);border-radius:10px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;font-size:0.88em;">XYZ100 &amp; S&amp;P500</button>
         <button class="spread-sub-btn" data-spread="oil" style="padding:9px 22px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text2);font-weight:600;cursor:pointer;font-size:0.88em;">Brent &amp; CL (WTI)</button>
@@ -457,7 +457,8 @@ function computeStats(trades) {
     stats[t.coin].volume += t.ntl;
     stats[t.coin].fees += t.fee;
     if (isEntryTrade(t.dir)) stats[t.coin].entryFees += t.fee;
-    stats[t.coin].pnl += t.pnl;
+    // Closed PnL = only exit/close trades (matches HL UI — open fills return -(entry fee) as closedPnl, not real PnL)
+    if (!isEntryTrade(t.dir)) stats[t.coin].pnl += t.pnl;
     stats[t.coin].trades++;
   });
   Object.values(stats).forEach(s => { s.feePct = s.volume > 0 ? (s.fees / s.volume) * 100 : 0; s.netPnl = s.pnl - s.entryFees; });
@@ -486,7 +487,7 @@ function renderOverview() {
   const vals = Object.values(stats);
   const totalVol = vals.reduce((s,c) => s + c.volume, 0);
   const totalFees = vals.reduce((s,c) => s + c.fees, 0);
-  const totalPnl = vals.reduce((s,c) => s + c.pnl, 0);
+  const totalPnl = vals.reduce((s,c) => s + c.pnl, 0); // already only close trades (see computeStats)
   const totalEntryFees = allTrades.filter(t => isEntryTrade(t.dir)).reduce((s,t) => s + t.fee, 0);
   document.getElementById('timeRange').innerHTML =
     '<span>Period: <strong>' + allTrades[0].ts.toLocaleDateString() + '</strong> to <strong>' + allTrades[allTrades.length-1].ts.toLocaleDateString() + '</strong></span>' +
@@ -494,9 +495,9 @@ function renderOverview() {
   renderCards('overviewCards', [
     { label: 'Total Volume', value: fmt(totalVol) },
     { label: 'All Fees (entry+exit)', value: fmt(totalFees), cls: 'negative' },
-    { label: 'Closed PnL', value: fmtPnl(totalPnl), cls: pnlClass(totalPnl), sub: 'Inclui fee de saida' },
+    { label: 'Closed PnL', value: fmtPnl(totalPnl), cls: pnlClass(totalPnl), sub: 'Inclui fee de saída' },
     { label: 'Entry Fees', value: fmt(totalEntryFees), cls: 'negative', sub: 'Fees das aberturas' },
-    { label: 'Net PnL', value: fmtPnl(totalPnl - totalEntryFees), cls: pnlClass(totalPnl - totalEntryFees), sub: 'closedPnl - entry fees' },
+    { label: 'Net PnL', value: fmtPnl(totalPnl - totalEntryFees), cls: pnlClass(totalPnl - totalEntryFees), sub: 'closedPnl − entry fees' },
     { label: 'Avg Trade', value: fmt(totalVol / allTrades.length) },
   ]);
   renderCoinTable(stats);
@@ -575,9 +576,9 @@ function renderXyzUnit() {
   renderCards('xyzTotalCards', [
     { label: 'XYZ Total Volume', value: fmt(xyzT.volume) },
     { label: 'XYZ Trades', value: xyzT.trades.toLocaleString() },
-    { label: 'Closed PnL', value: fmtPnl(xyzT.pnl), cls: pnlClass(xyzT.pnl), sub: 'Inclui fee de saida' },
+    { label: 'Closed PnL', value: fmtPnl(xyzT.pnl), cls: pnlClass(xyzT.pnl), sub: 'Inclui fee de saída' },
     { label: 'Entry Fees', value: fmt(xyzT.entryFees), cls: 'negative' },
-    { label: 'Net PnL', value: fmtPnl(xyzT.netPnl), cls: pnlClass(xyzT.netPnl), sub: 'closedPnl - entry fees' },
+    { label: 'Net PnL', value: fmtPnl(xyzT.netPnl), cls: pnlClass(xyzT.netPnl), sub: 'closedPnl − entry fees' },
     { label: 'Fee/Vol', value: xyzT.volume > 0 ? pctFmt((xyzT.fees/xyzT.volume)*100) : '0%' },
   ]);
   const cols = [
@@ -596,9 +597,9 @@ function renderXyzUnit() {
   renderCards('unitTotalCards', [
     { label: 'Unit Total Volume', value: fmt(unitT.volume) },
     { label: 'Unit Trades', value: unitT.trades.toLocaleString() },
-    { label: 'Closed PnL', value: fmtPnl(unitT.pnl), cls: pnlClass(unitT.pnl), sub: 'Inclui fee de saida' },
+    { label: 'Closed PnL', value: fmtPnl(unitT.pnl), cls: pnlClass(unitT.pnl), sub: 'Inclui fee de saída' },
     { label: 'Entry Fees', value: fmt(unitT.entryFees), cls: 'negative' },
-    { label: 'Net PnL', value: fmtPnl(unitT.netPnl), cls: pnlClass(unitT.netPnl), sub: 'closedPnl - entry fees' },
+    { label: 'Net PnL', value: fmtPnl(unitT.netPnl), cls: pnlClass(unitT.netPnl), sub: 'closedPnl − entry fees' },
     { label: 'Fee/Vol', value: unitT.volume > 0 ? pctFmt((unitT.fees/unitT.volume)*100) : '0%' },
   ]);
   let unitRows = Object.values(unitStats).sort((a,b) => b.volume - a.volume);
@@ -635,11 +636,14 @@ function isEntryTrade(dir) {
 function calcSpreadStats(trades) {
   const vol = trades.reduce((s,t) => s + t.ntl, 0);
   const allFees = trades.reduce((s,t) => s + t.fee, 0);
-  const closedPnl = trades.reduce((s,t) => s + t.pnl, 0);
   const entryTrades = trades.filter(t => isEntryTrade(t.dir));
+  const exitTrades  = trades.filter(t => !isEntryTrade(t.dir));
   const entryFeesReal = entryTrades.reduce((s,t) => s + t.fee, 0);
+  // Closed PnL = only exit/close trades (matches HL UI — open fills return -(entry fee), not real PnL)
+  const closedPnl = exitTrades.reduce((s,t) => s + t.pnl, 0);
+  // Net PnL = closedPnl (já inclui fee de saída) − entry fees
   const netPnl = closedPnl - entryFeesReal;
-  return { vol, allFees, entryFeesReal, closedPnl, netPnl, count: trades.length, entryCount: entryTrades.length, exitCount: trades.length - entryTrades.length };
+  return { vol, allFees, entryFeesReal, closedPnl, netPnl, count: trades.length, entryCount: entryTrades.length, exitCount: exitTrades.length };
 }
 function renderSpreadPanel(cfg, hours) {
   const id = cfg.idPrefix;
