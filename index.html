@@ -392,7 +392,9 @@ function pctFmt(n) { return n.toFixed(4) + '%'; }
 
 function isEntryTrade(dir) {
   const d = dir.toLowerCase();
-  return d.startsWith('open ') || d === 'buy' || d === 'sell' || d.includes('long > short') || d.includes('short > long');
+  // Spot: Buy = entrada, Sell = saída (PnL realizado)
+  // Perp: Open * = entrada; Close *, Long > Short, Short > Long = saída
+  return d.startsWith('open ') || d === 'buy' || d.includes('long > short') || d.includes('short > long');
 }
 function computeStats(trades) {
   const stats = {};
